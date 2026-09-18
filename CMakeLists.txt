@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
 option(MERIDIAN_WITH_LAYER_SHELL
-  "Generate the pinned Wayland layer-shell client protocol (runtime adapter not included)"
+  "Build the opt-in one-output Wayland layer-shell proof"
   OFF)
 
 find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Quick Qml Test)
@@ -124,6 +124,8 @@ if(MERIDIAN_WITH_LAYER_SHELL)
     PkgConfig::MERIDIAN_WAYLAND_CLIENT)
   add_test(NAME layer-shell-header COMMAND layer-shell-header-test)
   target_sources(meridian PRIVATE
+    src/layer_shell.cpp
+    src/layer_shell.h
     "${MERIDIAN_LAYER_SHELL_HEADER}"
     "${MERIDIAN_LAYER_SHELL_SOURCE}"
     "${MERIDIAN_XDG_SHELL_HEADER}"

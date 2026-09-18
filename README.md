@@ -139,10 +139,11 @@ screensaver identity. No desktop configuration or security policy is changed.
 
 ## Layer-shell development status
 
-The repository currently contains an optional, CI-tested protocol-generation
-foundation for the future Wayland wallpaper adapter. It is disabled by
-default and does not add a runtime `--wallpaper-layer` command yet. The
-existing `--wallpaper` mode remains a normal fullscreen renderer preview.
+The repository currently contains an optional, CI-tested one-output
+Wayland layer-shell proof. It is disabled by default. When enabled,
+`--wallpaper-layer` creates a real background surface with an empty input
+region and a solid diagnostic color; it does not yet render the Meridian map.
+The existing `--wallpaper` mode remains a normal fullscreen renderer preview.
 
 To validate the optional developer feature locally, install
 `wayland-scanner`, `wayland-client`, and `wayland-protocols`, then run:
@@ -155,7 +156,9 @@ cmake --build build-layer-shell
 ctest --test-dir build-layer-shell --output-on-failure
 ```
 
-The generated protocol bindings are not included in the default package.
+The generated protocol bindings and proof are not included in the default
+package. The proof requires a live Wayland session and exits safely if the
+compositor lacks layer-shell support.
 The implementation plan and safety requirements are in
 [docs/LAYER-SHELL.md](docs/LAYER-SHELL.md).
 
