@@ -49,10 +49,11 @@ int main(int argc,char **argv){
     engine.rootContext()->setContextProperty("clockModel",&clock);
     engine.rootContext()->setContextProperty("appCaptureMode",true);
     engine.rootContext()->setContextProperty("appSaverMode",false);
+    engine.rootContext()->setContextProperty("appWallpaperMode",false);
     engine.load(QUrl("qrc:/qml/Main.qml"));
     if(engine.rootObjects().isEmpty())return 1;
     auto window=qobject_cast<QQuickWindow*>(engine.rootObjects().first());
-    auto map=window->findChild<AtlasMap*>();
+    auto map=window->findChild<AtlasMap*>("atlasMap");
     if(!map)return 2;
 
     // These points are deliberately away from labels, grid lines, and coastlines.
@@ -97,8 +98,33 @@ int main(int argc,char **argv){
         auto image=window->grabWindow();
         if(image.isNull()){std::cerr<<"Empty render\n";return 4;}
     }
+
     QTest::keyClick(window,Qt::Key_Escape);QTest::qWait(20);
     if(window->isVisible()){std::cerr<<"Escape did not close preview\n";return 5;}
+
+    // Load the wallpaper renderer in a separate offscreen engine.  This
+    // exercises the mode-specific geometry while keeping the preview engine
+    // and its framed layout independent and deterministic.
+    QQmlApplicationEngine wallpaperEngine;
+    wallpaperEngine.rootContext()->setContextProperty("clockModel",&clock);
+    wallpaperEngine.rootContext()->setContextProperty("appCaptureMode",true);
+    wallpaperEngine.rootContext()->setContextProperty("appSaverMode",false);
+    wallpaperEngine.rootContext()->setContextProperty("appWallpaperMode",true);
+    wallpaperEngine.load(QUrl("qrc:/qml/Main.qml"));
+    if(wallpaperEngine.rootObjects().isEmpty()){std::cerr<<"Wallpaper mode failed to load\n";return 11;}
+    auto wallpaperWindow=qobject_cast<QQuickWindow*>(wallpaperEngine.rootObjects().first());
+    auto wallpaperMap=wallpaperWindow->findChild<AtlasMap*>("atlasMap");
+    auto frame=wallpaperWindow->findChild<QObject*>("pictureFrame");
+    if(!wallpaperWindow || !wallpaperMap || !frame || frame->property("visible").toBool()){
+        std::cerr<<"Wallpaper mode did not select the clean map surface\n";return 12;
+    }
+    wallpaperWindow->resize(2048,576);QTest::qWait(50);
+    QRectF wallpaperRect=wallpaperMap->mapRectToScene(wallpaperMap->boundingRect());
+    if(!wallpaperMap->property("equalArea").toBool() || wallpaperRect != QRectF(0,0,2048,576)){
+        std::cerr<<"Wallpaper map does not fill the offscreen viewport\n";return 13;
+    }
+    if(wallpaperWindow->grabWindow().isNull()){std::cerr<<"Empty wallpaper render\n";return 14;}
+
     if(warnings)return 6;
     std::cout<<"Responsive projection switches, map coverage and centering pass; Escape closes preview\n";
 }

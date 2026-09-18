@@ -9,7 +9,8 @@ It does **not** currently replace the Omarchy screensaver or lock screen.
 ## Status
 
 This is an early public-preview candidate. The current release is a standalone
-fullscreen clock that can be launched manually. Omarchy idle integration,
+clock that can be launched manually in preview, screensaver, or wallpaper
+renderer modes. Omarchy idle integration, true Wayland background layering,
 multi-monitor launch, and lock-screen handoff are planned follow-up work.
 
 The companion static Omarchy theme is published at
@@ -51,9 +52,13 @@ cmake --build build -j 4
 ctest --test-dir build --output-on-failure
 ./build/meridian
 ./build/meridian --fullscreen
+./build/meridian --screensaver
+./build/meridian --wallpaper
 ```
 
-Escape closes the preview. The fullscreen view uses the display's current
+Escape closes the preview or screensaver. `--wallpaper` is currently a
+non-focus fullscreen renderer preview; it does not yet install a background
+layer or alter Omarchy's desktop configuration. The fullscreen view uses the display's current
 logical dimensions; Qt handles the display scale. A thin walnut/brass picture
 frame replaces the former side panels. Ultrawide displays use a Lambert
 cylindrical equal-area map with mild horizontal expansion; standard displays
@@ -61,7 +66,8 @@ retain the 2:1 equirectangular map. This uses more ultrawide canvas while
 keeping the complete world visible. Equal-area projection compresses the polar
 regions rather than stretching an existing image vertically. The projection
 changes automatically on resize.
-Multi-monitor automatic launch is a later integration milestone.
+Multi-monitor automatic launch and the compositor-specific wallpaper adapter
+are later integration milestones.
 
 ## Arch and Omarchy installation
 

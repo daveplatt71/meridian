@@ -12,6 +12,8 @@ Window {
     color: "#101714"
     property bool captureMode: appCaptureMode
     property bool saverMode: appSaverMode
+    property bool wallpaperMode: appWallpaperMode
+    flags: wallpaperMode ? (Qt.FramelessWindowHint | Qt.WindowDoesNotAcceptFocus) : Qt.Window
     readonly property real rim: Math.max(7, Math.min(12, height * 0.006))
     readonly property real headingHeight: Math.max(24, Math.min(30, height * 0.023))
     readonly property real footerHeight: Math.max(22, Math.min(26, height * 0.021))
@@ -29,6 +31,7 @@ Window {
     Rectangle {
         id: frame
         objectName: "pictureFrame"
+        visible: !root.wallpaperMode
         anchors.centerIn: parent
         width: root.mapWidth + root.rim * 2
         height: root.mapHeight + root.hourHeight + root.headingHeight + root.footerHeight + root.rim * 2
@@ -83,18 +86,8 @@ Window {
                     font.pixelSize: Math.max(10, root.headingHeight * 0.29)
                 }
             }
-            AtlasMap {
-                id: atlasMap
-                objectName: "atlasMap"
-                y: heading.height
-                width: root.mapWidth
-                height: root.mapHeight + root.hourHeight
-                hourBandHeight: root.hourHeight
-                equalArea: root.wideMap
-                utc: clockModel.utc
-            }
             Item {
-                y: heading.height + atlasMap.height
+                y: heading.height + root.mapHeight + root.hourHeight
                 width: parent.width
                 height: root.footerHeight
                 Text {
@@ -127,9 +120,25 @@ Window {
             }
         }
     }
+    // One renderer serves preview, screensaver, and wallpaper-preview modes.
+    // The wallpaper mode is intentionally only a renderer preview for now;
+    // compositor/layer-shell integration belongs to a later adapter.
+    AtlasMap {
+        id: atlasMap
+        objectName: "atlasMap"
+        x: root.wallpaperMode ? 0 : frame.x + root.rim
+        y: root.wallpaperMode ? 0 : frame.y + root.rim + root.headingHeight
+        width: root.wallpaperMode ? root.width : root.mapWidth
+        height: root.wallpaperMode ? root.height : root.mapHeight + root.hourHeight
+        hourBandHeight: root.wallpaperMode
+            ? Math.max(24, Math.min(52, root.height * 0.035))
+            : root.hourHeight
+        equalArea: root.width / Math.max(1, root.height) > 2.6
+        utc: clockModel.utc
+    }
     Item {
         anchors.fill: parent
-        focus: true
+        focus: !root.wallpaperMode
         Keys.onPressed: function(event) {
             if (event.key === Qt.Key_Escape || root.saverMode) {
                 root.close()
@@ -140,6 +149,10 @@ Window {
     MouseArea {
         anchors.fill: parent
         enabled: root.saverMode
-        onClicked: root.close()
+        hoverEnabled: true
+        acceptedButtons: Qt.AllButtons
+        onPressed: root.close()
+        onPositionChanged: root.close()
+        onWheel: root.close()
     }
 }

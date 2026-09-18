@@ -22,7 +22,8 @@
 
 ## Renderer and desktop modes
 
-- Share one renderer between `--wallpaper` and `--screensaver` modes.
+- Share one renderer between `--wallpaper` and `--screensaver` modes. (renderer
+  preview implemented; compositor/lifecycle integration remains)
 - Update solar shading at minute rate while keeping the clock responsive.
 - Add a Wayland background layer for wallpaper mode.
 - Support multiple monitors and per-output scale factors.
