@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  arch-build:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install build and runtime dependencies
+        run: |
+          pacman -Syu --noconfirm --needed \
+            base-devel git cmake ninja qt6-base qt6-declarative qt6-wayland noto-fonts
+
+      - name: Build, test, and package
+        run: |
+          useradd --create-home builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          su builder -s /bin/bash -c \
+            'cd "$GITHUB_WORKSPACE/packaging" && makepkg --noconfirm --cleanbuild --clean -f'
+
+      - name: Install package and run smoke test
+        run: |
+          pacman -U --noconfirm packaging/meridian-0.1.0-1-x86_64.pkg.tar.zst
+          QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME=basic \
+            QT_QUICK_BACKEND=software \
+            /usr/bin/meridian --size 640x360 \
+            --at 2026-06-21T08:24:00Z --snapshot /tmp/meridian-ci.png
+          test -s /tmp/meridian-ci.png
+
+      - name: Validate package metadata and contents
+        run: |
+          package_file=packaging/meridian-0.1.0-1-x86_64.pkg.tar.zst
+          test -f "$package_file"
+          pacman -Qp "$package_file"
+          tar -tf "$package_file" | grep -Fx 'usr/bin/meridian'
+          tar -tf "$package_file" | grep -Fx 'usr/share/licenses/meridian/LICENSE'
+          tar -tf "$package_file" | grep -Fx 'usr/share/doc/meridian/README.md'

@@ -1,0 +1,8 @@
+build/
+captures/
+pkg/
+*.pkg.tar.zst
+.makepkg-build/
+packaging/src/
+packaging/pkg/
+packaging/*.pkg.tar.zst
