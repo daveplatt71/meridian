@@ -4,6 +4,8 @@ A native, offline vintage world-clock preview for Omarchy / Wayland, inspired
 by mechanical boardroom solar clocks. First milestone: standalone preview.
 It does **not** currently replace the Omarchy screensaver or lock screen.
 
+![Meridian ultrawide preview](docs/preview-ultrawide.png)
+
 ## Status
 
 This is an early public-preview candidate. The current release is a standalone
