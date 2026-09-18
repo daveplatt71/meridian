@@ -13,6 +13,7 @@ qt_add_executable(meridian src/main.cpp src/atlas.cpp src/atlas.h src/solar.h sr
 target_link_libraries(meridian PRIVATE Qt6::Quick Qt6::Qml)
 
 if(MERIDIAN_WITH_LAYER_SHELL)
+  target_compile_definitions(meridian PRIVATE MERIDIAN_WITH_LAYER_SHELL=1)
   enable_language(C)
 
   find_program(MERIDIAN_WAYLAND_SCANNER

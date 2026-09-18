@@ -18,10 +18,23 @@ int main(int argc,char **argv) {
     parser.addOption({"fullscreen","Fill the current display (Escape to close)."});
     parser.addOption({"screensaver","Open the live atlas as a dismissible fullscreen screensaver."});
     parser.addOption({"wallpaper","Render the live atlas as a fullscreen wallpaper preview (not a desktop wallpaper)."});
+    parser.addOption({"wallpaper-layer","Use the experimental Wayland layer-shell adapter (not yet implemented)."});
     parser.addOption({"at","Preview an ISO-8601 instant with Z or explicit UTC offset.","instant"});
     parser.addOption({"snapshot","Save a PNG and exit; use QT_QPA_PLATFORM=offscreen for headless rendering.","file"});
     parser.addOption({"size","Window or snapshot size, e.g. 5120x1440. Defaults to fit display.","WxH"});
     parser.process(app);
+    if(parser.isSet("wallpaper-layer")) {
+        if(parser.isSet("screensaver") || parser.isSet("wallpaper") || parser.isSet("fullscreen")) {
+            qCritical("--wallpaper-layer cannot be combined with --fullscreen, --screensaver, or --wallpaper");
+            return 2;
+        }
+#ifdef MERIDIAN_WITH_LAYER_SHELL
+        qCritical("--wallpaper-layer protocol support is built, but the runtime adapter is not implemented yet");
+#else
+        qCritical("--wallpaper-layer is unavailable in this build; configure with -DMERIDIAN_WITH_LAYER_SHELL=ON after the runtime adapter is released");
+#endif
+        return 2;
+    }
     if(parser.isSet("screensaver") && parser.isSet("wallpaper")) {qCritical("--screensaver and --wallpaper are mutually exclusive");return 2;}
     QDateTime fixed;
     if(parser.isSet("at")) {
