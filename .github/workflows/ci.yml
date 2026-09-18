@@ -17,6 +17,15 @@ jobs:
           pacman -Syu --noconfirm --needed \
             base-devel git cmake ninja qt6-base qt6-declarative qt6-wayland noto-fonts
 
+      - name: Validate optional layer-shell protocol generation
+        run: |
+          pacman -S --noconfirm --needed wayland wayland-protocols
+          cmake -S . -B build-layer-shell -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DMERIDIAN_WITH_LAYER_SHELL=ON
+          cmake --build build-layer-shell
+          ctest --test-dir build-layer-shell --output-on-failure
+
       - name: Build, test, and package
         run: |
           useradd --create-home builder
