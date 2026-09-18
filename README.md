@@ -12,6 +12,9 @@ This is an early public-preview candidate. The current release is a standalone
 fullscreen clock that can be launched manually. Omarchy idle integration,
 multi-monitor launch, and lock-screen handoff are planned follow-up work.
 
+The companion static Omarchy theme is published at
+[daveplatt71/meridian-theme](https://github.com/daveplatt71/meridian-theme).
+
 ## Design priority: speed and size
 
 The user's guiding requirement is that Meridian stay fast and small, in keeping

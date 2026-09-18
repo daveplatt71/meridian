@@ -8,7 +8,7 @@
 - Public standalone launch path; no Omarchy idle, lock, or screensaver
   integration.
 
-## Next milestone — Omarchy theme package (in progress)
+## Next milestone — Omarchy theme package (static preview published)
 
 - Add the `theme/meridian/` package with a walnut/brass/parchment/deep-ocean
   palette and standard/ultrawide static wallpaper assets.
@@ -17,6 +17,8 @@
 - Make activation opt-in, retain a static fallback if live mode fails, clean
   up on theme switch/uninstall, and record CPU/GPU/memory budgets.
 - Prepare the package for an Omarchy suggestion/PR after local review.
+- Keep the installable theme at the root of the companion
+  `daveplatt71/meridian-theme` repository.
 
 ## Renderer and desktop modes
 
