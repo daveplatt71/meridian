@@ -6,3 +6,14 @@ pkg/
 packaging/src/
 packaging/pkg/
 packaging/*.pkg.tar.zst
+.env
+.env.*
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+*.log
+*.swp
+.DS_Store

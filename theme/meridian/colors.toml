@@ -1,0 +1,32 @@
+mode = "dark"
+
+# Vintage walnut, aged brass, parchment, and deep-ocean palette.
+accent = "#c99a52"
+selection = "#3d5360"
+muted = "#71808a"
+
+background = "#10232d"
+dark_background = "#0a171e"
+darker_background = "#061016"
+lighter_background = "#1d3945"
+
+foreground = "#ead9b8"
+dark_foreground = "#8f897b"
+light_foreground = "#f3e6ca"
+bright_foreground = "#f6e8c8"
+
+red = "#b85f4d"
+yellow = "#d6b26a"
+orange = "#c7814d"
+green = "#8eaa83"
+cyan = "#74a9a6"
+blue = "#658fa6"
+magenta = "#a77c86"
+brown = "#76523a"
+
+bright_red = "#d27a61"
+bright_yellow = "#e4c47d"
+bright_green = "#a9c39b"
+bright_cyan = "#91c5bf"
+bright_blue = "#86b1c5"
+bright_magenta = "#c19aa1"
