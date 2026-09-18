@@ -24,6 +24,8 @@
 
 - Share one renderer between `--wallpaper` and `--screensaver` modes. (renderer
   preview implemented; compositor/lifecycle integration remains)
+- Pin and CI-test optional `wlr-layer-shell` protocol generation. (done;
+  runtime layer-surface adapter not yet implemented)
 - Update solar shading at minute rate while keeping the clock responsive.
 - Add a Wayland background layer for wallpaper mode.
 - Support multiple monitors and per-output scale factors.

@@ -137,6 +137,28 @@ possible.
 The preview deliberately uses `org.meridian.preview`, not Omarchy's tracked
 screensaver identity. No desktop configuration or security policy is changed.
 
+## Layer-shell development status
+
+The repository currently contains an optional, CI-tested protocol-generation
+foundation for the future Wayland wallpaper adapter. It is disabled by
+default and does not add a runtime `--wallpaper-layer` command yet. The
+existing `--wallpaper` mode remains a normal fullscreen renderer preview.
+
+To validate the optional developer feature locally, install
+`wayland-scanner`, `wayland-client`, and `wayland-protocols`, then run:
+
+```sh
+cmake -S . -B build-layer-shell -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DMERIDIAN_WITH_LAYER_SHELL=ON
+cmake --build build-layer-shell
+ctest --test-dir build-layer-shell --output-on-failure
+```
+
+The generated protocol bindings are not included in the default package.
+The implementation plan and safety requirements are in
+[docs/LAYER-SHELL.md](docs/LAYER-SHELL.md).
+
 ## Agent workflow
 
 Luna implemented the QML presentation under a fixed interface. Astra reviewed
