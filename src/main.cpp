@@ -26,17 +26,19 @@ int main(int argc,char **argv) {
     parser.addOption({"snapshot","Save a PNG and exit; use QT_QPA_PLATFORM=offscreen for headless rendering.","file"});
     parser.addOption({"size","Window or snapshot size, e.g. 5120x1440. Defaults to fit display.","WxH"});
     parser.process(app);
-    if(parser.isSet("wallpaper-layer")) {
+    const bool layerMode = parser.isSet("wallpaper-layer");
+    if(layerMode) {
         if(parser.isSet("screensaver") || parser.isSet("wallpaper") || parser.isSet("fullscreen")) {
             qCritical("--wallpaper-layer cannot be combined with --fullscreen, --screensaver, or --wallpaper");
             return 2;
         }
 #ifdef MERIDIAN_WITH_LAYER_SHELL
-        return runLayerShellProof(app);
+        // The layer mode is entered after the shared clock and AtlasMap type
+        // are initialized below.
 #else
         qCritical("--wallpaper-layer is unavailable in this build; configure with -DMERIDIAN_WITH_LAYER_SHELL=ON");
-#endif
         return 2;
+#endif
     }
     if(parser.isSet("screensaver") && parser.isSet("wallpaper")) {qCritical("--screensaver and --wallpaper are mutually exclusive");return 2;}
     QDateTime fixed;
@@ -53,6 +55,9 @@ int main(int argc,char **argv) {
     } else {auto available=app.primaryScreen()->availableGeometry().size();size=QSize(std::min(1600,int(available.width()*.9)),std::min(800,int(available.height()*.85)));}
     qmlRegisterType<AtlasMap>("VintageAtlas",1,0,"AtlasMap");
     Clock clock(fixed);
+#ifdef MERIDIAN_WITH_LAYER_SHELL
+    if(layerMode)return runLayerShellProof(app,clock);
+#endif
     QQmlApplicationEngine engine;
     QObject::connect(&engine,&QQmlEngine::warnings,[](const QList<QQmlError> &errors){for(const auto &error:errors)std::cerr<<error.toString().toStdString()<<'\n';});
     engine.rootContext()->setContextProperty("clockModel",&clock);

@@ -129,9 +129,9 @@ or changing Omarchy settings.
 ### Phase 1: raw layer-shell proof of life
 
 Current status: the repository now has an opt-in one-output proof. It creates
-the real background surface and paints a solid diagnostic color; it does not
-yet connect the QML map to the layer surface. The remaining items below are
-the acceptance requirements for extending that proof into the live renderer.
+the real background surface and renders the QML map into its first frame. It
+does not yet redraw on minute clock changes or manage multiple outputs. The
+remaining items below are the acceptance requirements for production use.
 
 Add a build option such as `MERIDIAN_WITH_LAYER_SHELL`, disabled when the
 optional protocol/toolchain pieces are unavailable. Pin and license the

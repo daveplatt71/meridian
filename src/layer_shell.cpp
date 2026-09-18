@@ -2,6 +2,12 @@
 
 #include <QCoreApplication>
 #include <QGuiApplication>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
+#include <QQuickItem>
+#include <QQuickRenderControl>
+#include <QQuickRenderTarget>
+#include <QQuickWindow>
 #include <QSocketNotifier>
 #include <QTimer>
 #include <QtGlobal>
@@ -9,6 +15,8 @@
 #include <wayland-client-core.h>
 #include <wayland-client-protocol.h>
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
+#include "atlas.h"
+#include "clock.h"
 
 #include <cerrno>
 #include <cstdio>
@@ -24,7 +32,8 @@ namespace {
 
 class LayerShellProof {
 public:
-    explicit LayerShellProof(QCoreApplication &app) : app_(app) {}
+    LayerShellProof(QGuiApplication &app, Clock &clock)
+        : app_(app), clock_(clock), renderWindow_(&renderControl_) {}
     ~LayerShellProof() { cleanup(); }
 
     bool start() {
@@ -117,6 +126,10 @@ private:
             fail("could not allocate wl_shm buffer");
             return;
         }
+        if (!renderScene()) {
+            fail("could not render MeridianScene into wl_shm buffer");
+            return;
+        }
         wl_surface_attach(surface_, buffer_, 0, 0);
         wl_surface_damage_buffer(surface_, 0, 0, width_, height_);
         wl_surface_commit(surface_);
@@ -132,9 +145,6 @@ private:
         if (fd_ < 0 || ftruncate(fd_, static_cast<off_t>(bytes)) < 0) return false;
         pixels_ = static_cast<uint32_t *>(mmap(nullptr, bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0));
         if (pixels_ == MAP_FAILED) return false;
-        for (uint32_t y = 0; y < height_; ++y)
-            for (uint32_t x = 0; x < width_; ++x)
-                pixels_[y * width_ + x] = 0xff15231f; // diagnostic deep-ocean green
         wl_shm_pool *pool = wl_shm_create_pool(shm_, fd_, static_cast<int32_t>(bytes));
         if (!pool) return false;
         buffer_ = wl_shm_pool_create_buffer(pool, 0, width_, height_, static_cast<int32_t>(stride), WL_SHM_FORMAT_XRGB8888);
@@ -146,6 +156,33 @@ private:
             }
         };
         wl_buffer_add_listener(buffer_, &bufferListener, this);
+        return true;
+    }
+
+    bool renderScene() {
+        image_ = QImage(static_cast<int>(width_), static_cast<int>(height_), QImage::Format_ARGB32_Premultiplied);
+        image_.fill(Qt::transparent);
+        renderWindow_.setColor(Qt::transparent);
+        renderWindow_.setRenderTarget(QQuickRenderTarget::fromPaintDevice(&image_));
+        renderWindow_.resize(static_cast<int>(width_), static_cast<int>(height_));
+        if (!scene_) {
+            engine_.rootContext()->setContextProperty("clockModel", &clock_);
+            engine_.rootContext()->setContextProperty("appCaptureMode", false);
+            engine_.rootContext()->setContextProperty("appSaverMode", false);
+            engine_.rootContext()->setContextProperty("appWallpaperMode", true);
+            engine_.load(QUrl("qrc:/qml/MeridianScene.qml"));
+            if (engine_.rootObjects().isEmpty()) return false;
+            scene_ = qobject_cast<QQuickItem *>(engine_.rootObjects().first());
+            if (!scene_) return false;
+            scene_->setParentItem(renderWindow_.contentItem());
+        }
+        scene_->setWidth(static_cast<qreal>(width_));
+        scene_->setHeight(static_cast<qreal>(height_));
+        renderControl_.polishItems();
+        renderControl_.sync();
+        renderControl_.render();
+        for (uint32_t y = 0; y < height_; ++y)
+            std::memcpy(pixels_ + y * width_, image_.constScanLine(static_cast<int>(y)), size_t(width_) * 4);
         return true;
     }
 
@@ -163,7 +200,13 @@ private:
         if (fd_ >= 0) close(fd_);
     }
 
-    QCoreApplication &app_;
+    QGuiApplication &app_;
+    Clock &clock_;
+    QQuickRenderControl renderControl_;
+    QQuickWindow renderWindow_;
+    QQmlApplicationEngine engine_;
+    QQuickItem *scene_ = nullptr;
+    QImage image_;
     QSocketNotifier *notifier_ = nullptr;
     wl_display *display_ = nullptr;
     wl_registry *registry_ = nullptr;
@@ -182,8 +225,9 @@ private:
 
 } // namespace
 
-int runLayerShellProof(QGuiApplication &app) {
-    LayerShellProof proof(app);
+int runLayerShellProof(QGuiApplication &app, Clock &clock) {
+    QQuickWindow::setGraphicsApi(QSGRendererInterface::Software);
+    LayerShellProof proof(app,clock);
     if (!proof.start()) return 2;
     return app.exec();
 }

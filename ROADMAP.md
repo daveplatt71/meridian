@@ -25,8 +25,9 @@
 - Share one renderer between `--wallpaper` and `--screensaver` modes. (renderer
   preview implemented; compositor/lifecycle integration remains)
 - Pin and CI-test optional `wlr-layer-shell` protocol generation. (done)
-- Add one-output solid-color layer-shell proof with empty input and safe
-  `wl_shm` lifecycle. (implemented; live Meridian scene still pending)
+- Add one-output layer-shell proof with empty input and safe `wl_shm`
+  lifecycle. (implemented; initial Meridian scene render works, minute redraw
+  and multi-output lifecycle still pending)
 - Update solar shading at minute rate while keeping the clock responsive.
 - Add a Wayland background layer for wallpaper mode.
 - Support multiple monitors and per-output scale factors.
