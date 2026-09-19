@@ -138,16 +138,15 @@ allocation before copying pixels into shared memory. It uses two bounded
 `wl_shm` buffers so a compositor-held frame does not block the next minute
 update; updates coalesce until a buffer is released.
 
-The first ownership refactor is complete in `src/layer_shell.cpp`.
-`LayerShellProof` owns the connection, registry, protocol globals, first bound
-`wl_output`, event notifier, and clock connection. It creates exactly one
-`OutputSurface`, which owns its layer surface, two stable buffer slots, QML
-scene, render control, and image target. The surface borrows the output and
-connection services; it never disconnects the shared display. On teardown,
-the controller stops callbacks, destroys the surface and its buffers, then
-destroys the output/globals and disconnects. Rendering, configure handling,
-and minute-update policy remain unchanged; multiple instances and output
-lifecycle changes are still future work.
+The ownership refactor is complete in `src/layer_shell.cpp`.
+`LayerShellProof` owns the connection, registry, protocol globals, all
+initially bound `wl_output`s, event notifier, and clock connection. It creates
+one `OutputSurface` per initial output; each owns its layer surface, two stable
+buffer slots, QML scene, render control, and image target. The surfaces borrow
+the output and connection services; they never disconnect the shared display.
+On teardown, the controller stops callbacks, destroys all surfaces and their
+buffers, then destroys the output/globals and disconnects. Output add/remove,
+hotplug, and scale changes remain future work.
 
 The remaining items below are the acceptance requirements for production use.
 

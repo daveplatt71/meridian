@@ -32,6 +32,8 @@
   multi-output lifecycle still pending)
 - Extract reusable per-output surface/buffer/render ownership while retaining
   exactly one instance. (done; multi-output behavior remains pending)
+- Create one static `OutputSurface` per initially advertised `wl_output`.
+  (done; hotplug, removal, and scale changes remain pending)
 - Update solar shading at minute rate while keeping the clock responsive.
 - Add a Wayland background layer for wallpaper mode.
 - Support multiple monitors and per-output scale factors.

@@ -30,6 +30,7 @@
 
 #include <array>
 #include <memory>
+#include <vector>
 
 namespace {
 
@@ -275,11 +276,12 @@ class LayerShellProof : public QObject {
 public:
     LayerShellProof(QGuiApplication &app, Clock &clock) : wayland_{app}, clock_(clock) {}
     ~LayerShellProof() override {
-        // Stop callback delivery before destroying their per-output owners.
+        // Stop callback delivery before destroying per-output owners.
         QObject::disconnect(clockConnection_);
         notifier_.reset();
-        outputSurface_.reset();
-        if (output_) wl_output_destroy(output_);
+        outputSurfaces_.clear();
+        for (wl_output *output : outputs_)
+            if (output) wl_output_destroy(output);
         if (registry_) wl_registry_destroy(registry_);
         if (wayland_.layerShell) zwlr_layer_shell_v1_destroy(wayland_.layerShell);
         if (wayland_.shm) wl_shm_destroy(wayland_.shm);
@@ -303,9 +305,9 @@ public:
                     wayland.compositor = static_cast<wl_compositor *>(wl_registry_bind(registry, name, &wl_compositor_interface, 4));
                 else if (std::strcmp(interface, wl_shm_interface.name) == 0)
                     wayland.shm = static_cast<wl_shm *>(wl_registry_bind(registry, name, &wl_shm_interface, 1));
-                else if (std::strcmp(interface, wl_output_interface.name) == 0 && !self->output_)
-                    self->output_ = static_cast<wl_output *>(wl_registry_bind(
-                        registry, name, &wl_output_interface, qMin(version, 4u)));
+                else if (std::strcmp(interface, wl_output_interface.name) == 0)
+                    self->outputs_.push_back(static_cast<wl_output *>(wl_registry_bind(
+                        registry, name, &wl_output_interface, qMin(version, 4u))));
                 else if (std::strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0 && version >= 4)
                     wayland.layerShell = static_cast<zwlr_layer_shell_v1 *>(wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, 4));
             },
@@ -314,16 +316,20 @@ public:
         wl_registry_add_listener(registry_, &listener, this);
         if (wl_display_roundtrip(wayland_.display) < 0)
             return wayland_.fail("Wayland registry roundtrip failed");
-        if (!wayland_.compositor || !wayland_.shm || !output_ || !wayland_.layerShell)
+        if (!wayland_.compositor || !wayland_.shm || outputs_.empty() || !wayland_.layerShell)
             return wayland_.fail("compositor lacks wl_compositor, wl_shm, wl_output, or wlr-layer-shell v4");
 
-        // This refactor deliberately retains exactly one output instance.
-        outputSurface_ = std::make_unique<OutputSurface>(wayland_, clock_, output_);
-        if (!outputSurface_->start()) return false;
+        outputSurfaces_.reserve(outputs_.size());
+        for (wl_output *output : outputs_) {
+            auto surface = std::make_unique<OutputSurface>(wayland_, clock_, output);
+            if (!surface->start()) return false;
+            outputSurfaces_.push_back(std::move(surface));
+        }
         if (wl_display_roundtrip(wayland_.display) < 0)
             return wayland_.fail("Wayland configure roundtrip failed");
         if (wayland_.failed) return false;
-        if (!outputSurface_->configured()) return wayland_.fail("layer-shell surface did not configure");
+        for (const auto &surface : outputSurfaces_)
+            if (!surface->configured()) return wayland_.fail("layer-shell surface did not configure");
 
         notifier_ = std::make_unique<QSocketNotifier>(wl_display_get_fd(wayland_.display), QSocketNotifier::Read);
         QObject::connect(notifier_.get(), &QSocketNotifier::activated, this, [this] {
@@ -336,7 +342,8 @@ public:
         });
         clockConnection_ = QObject::connect(&clock_, &Clock::changed, this, [this] {
             const qint64 minute = clock_.utc().toSecsSinceEpoch() / 60;
-            outputSurface_->minuteChanged(minute);
+            for (const auto &surface : outputSurfaces_)
+                surface->minuteChanged(minute);
         });
         return wayland_.flush();
     }
@@ -345,8 +352,8 @@ private:
     WaylandState wayland_;
     Clock &clock_;
     wl_registry *registry_ = nullptr;
-    wl_output *output_ = nullptr;
-    std::unique_ptr<OutputSurface> outputSurface_;
+    std::vector<wl_output *> outputs_;
+    std::vector<std::unique_ptr<OutputSurface>> outputSurfaces_;
     std::unique_ptr<QSocketNotifier> notifier_;
     QMetaObject::Connection clockConnection_;
 };
