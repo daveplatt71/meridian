@@ -147,9 +147,11 @@ renderer. It is disabled by default. When enabled,
 region and renders the Meridian map into it. It binds every initially
 advertised `wl_output`, creates one surface per output, handles runtime output
 add/remove, and redraws each output when the UTC minute changes. Integer output
-scales are applied to physical buffers while QML remains logical; fractional
-scaling and suspend/resume are still pending. Layer-surface close and logical
-resize recovery recreate only the affected output. It
+scales are applied to physical buffers while QML remains logical. An optional
+fractional-scale build uses `wp_viewporter` when the compositor advertises it;
+otherwise it falls back to integer scaling. Layer-surface close and logical
+resize recovery recreate only the affected output. Suspend/resume remains
+pending. It
 requires layer-shell v4 and `wl_compositor` v4, and bounds shared-memory frame
 allocation. The
 layer-shell proof also uses two bounded shared-memory buffers and coalesces
@@ -166,6 +168,11 @@ cmake -S . -B build-layer-shell -G Ninja \
 cmake --build build-layer-shell
 ctest --test-dir build-layer-shell --output-on-failure
 ```
+
+To exercise the optional fractional-scale bindings as well, add
+`-DMERIDIAN_WITH_FRACTIONAL_SCALE=ON` to the configure command. That requires
+the installed staging `fractional-scale-v1` and stable `viewporter` protocol
+XML files.
 
 The generated protocol bindings and proof are not included in the default
 package. The proof requires a live Wayland session and exits safely if the

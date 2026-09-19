@@ -15,6 +15,10 @@
 #include <wayland-client-core.h>
 #include <wayland-client-protocol.h>
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
+#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+#include "fractional-scale-v1-client-protocol.h"
+#include "viewporter-client-protocol.h"
+#endif
 #include "atlas.h"
 #include "clock.h"
 
@@ -45,6 +49,10 @@ struct WaylandState {
     wl_compositor *compositor = nullptr;
     wl_shm *shm = nullptr;
     zwlr_layer_shell_v1 *layerShell = nullptr;
+#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+    wp_fractional_scale_manager_v1 *fractionalScaleManager = nullptr;
+    wp_viewporter *viewporter = nullptr;
+#endif
     bool failed = false;
 
     bool fail(const char *message) {
@@ -61,12 +69,22 @@ struct WaylandState {
     }
 };
 
+// Kept by the output, beyond any surface replacement. Retaining the preferred
+// value prevents each successor's initial scale event from retiring it again.
+struct OutputScale {
+    int32_t integer = 1;
+#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+    uint32_t preferred = 0; // 120ths; zero means no preference received yet.
+#endif
+};
+
 // One output's surface, render scene, and two stable buffer slots. Neither this
 // object nor its slots may move while Wayland listeners hold their addresses.
 class OutputSurface {
 public:
-    OutputSurface(WaylandState &wayland, Clock &clock, wl_output *output, int32_t scale)
-        : wayland_(wayland), clock_(clock), output_(output), scale_(scale), renderWindow_(&renderControl_) {}
+    OutputSurface(WaylandState &wayland, Clock &clock, wl_output *output, OutputScale &scale)
+        : wayland_(wayland), clock_(clock), output_(output), outputScale_(scale),
+          scale_(scale.integer), renderWindow_(&renderControl_) {}
     ~OutputSurface() { cleanup(); }
     OutputSurface(const OutputSurface &) = delete;
     OutputSurface &operator=(const OutputSurface &) = delete;
@@ -97,13 +115,31 @@ public:
             ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT);
         zwlr_layer_surface_v1_set_exclusive_zone(layerSurface_, -1);
         zwlr_layer_surface_v1_set_keyboard_interactivity(layerSurface_, ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE);
+#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+        // Both extensions are needed. Missing either retains integer scaling.
+        if (wayland_.fractionalScaleManager && wayland_.viewporter) {
+            fractionalScale_ = wp_fractional_scale_manager_v1_get_fractional_scale(wayland_.fractionalScaleManager, surface_);
+            viewport_ = wp_viewporter_get_viewport(wayland_.viewporter, surface_);
+            if (!fractionalScale_ || !viewport_) return fail("could not create fractional-scale surface extensions");
+            static const wp_fractional_scale_v1_listener fractionalListener = {
+                [](void *data, wp_fractional_scale_v1 *, uint32_t preferred) {
+                    static_cast<OutputSurface *>(data)->preferredScaleChanged(preferred);
+                }
+            };
+            wp_fractional_scale_v1_add_listener(fractionalScale_, &fractionalListener, this);
+            if (outputScale_.preferred) scale_ = bufferScale(outputScale_.preferred);
+        }
+#endif
         wl_region *empty = wl_compositor_create_region(wayland_.compositor);
         if (!empty) return fail("could not create empty input region");
         wl_surface_set_input_region(surface_, empty);
         wl_region_destroy(empty);
         // The controller waits for initial wl_output.done before constructing
         // this owner, so even the empty initial commit has the output's scale.
-        wl_surface_set_buffer_scale(surface_, scale_);
+        // With wp_viewport, keep the Wayland buffer scale at 1: the viewport
+        // source is expressed in the physical buffer's pixels. Without it,
+        // use the integer output scale directly.
+        wl_surface_set_buffer_scale(surface_, surfaceBufferScale());
         // Required initial commit: no buffer may be attached before configure.
         wl_surface_commit(surface_);
         return true;
@@ -113,6 +149,20 @@ public:
     bool retired() const { return retired_; }
     bool closed() const { return closed_; }
     void retire() { retired_ = true; pendingRender_ = false; }
+    bool hasPreferredScale() const {
+#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+        return fractionalScale_ && outputScale_.preferred != 0;
+#else
+        return false;
+#endif
+    }
+
+    int32_t surfaceBufferScale() const {
+#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+        if (fractionalScale_ && viewport_) return 1;
+#endif
+        return scale_;
+    }
 
     void minuteChanged(qint64 minute) {
         if (minute == lastMinute_ || retired_ || wayland_.failed) return;
@@ -137,6 +187,32 @@ private:
         return wayland_.fail(message);
     }
 
+#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+    static int32_t bufferScale(uint32_t preferred) {
+        // ceil(preferred / 120), without overflowing a uint32_t at UINT32_MAX.
+        return static_cast<int32_t>(preferred / 120 + (preferred % 120 != 0));
+    }
+
+    void preferredScaleChanged(uint32_t preferred) {
+        if (wayland_.failed || closed_) return;
+        if (preferred == 0) {
+            fail("compositor supplied an invalid fractional scale");
+            return;
+        }
+        if (preferred == outputScale_.preferred) return;
+        outputScale_.preferred = preferred;
+        if (configured_) {
+            // Never rewrite a submitted buffer. The controller replaces only
+            // this owner after dispatch; preserve even same-ceiling changes.
+            retire();
+        } else if (!retired_) {
+            // No buffers exist yet, so an initial event can be applied in place.
+            scale_ = bufferScale(preferred);
+            wl_surface_set_buffer_scale(surface_, surfaceBufferScale());
+        }
+    }
+#endif
+
     void configure(zwlr_layer_surface_v1 *surface, uint32_t serial, uint32_t width, uint32_t height) {
         if (retired_ || wayland_.failed) return;
         zwlr_layer_surface_v1_ack_configure(surface, serial);
@@ -160,6 +236,16 @@ private:
             fail("could not render MeridianScene into wl_shm buffer");
             return;
         }
+#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+        if (viewport_) {
+            // Viewport source coordinates are buffer pixels, while the
+            // destination is surface-logical pixels. Select the whole
+            // physical buffer and present it at the logical configure size.
+            wp_viewport_set_source(viewport_, wl_fixed_from_int(0), wl_fixed_from_int(0),
+                                   wl_fixed_from_int(bufferWidth_), wl_fixed_from_int(bufferHeight_));
+            wp_viewport_set_destination(viewport_, width_, height_);
+        }
+#endif
         lastMinute_ = clock_.utc().toSecsSinceEpoch() / 60;
         pendingRender_ = false;
         slots_[0].released = false;
@@ -272,6 +358,10 @@ private:
     void cleanup() {
         renderControl_.invalidate();
         renderWindow_.setRenderTarget(QQuickRenderTarget());
+#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+        if (viewport_) wp_viewport_destroy(viewport_);
+        if (fractionalScale_) wp_fractional_scale_v1_destroy(fractionalScale_);
+#endif
         if (layerSurface_) zwlr_layer_surface_v1_destroy(layerSurface_);
         if (surface_) wl_surface_destroy(surface_);
         for (BufferSlot &slot : slots_) {
@@ -285,7 +375,8 @@ private:
     WaylandState &wayland_;
     Clock &clock_;
     wl_output *output_; // Borrowed; the controller destroys it after this object.
-    const int32_t scale_;
+    OutputScale &outputScale_; // Borrowed; survives surface recreation.
+    int32_t scale_;
     QQuickRenderControl renderControl_;
     QImage image_; // Must outlive the render window's paint-device target.
     QQuickWindow renderWindow_;
@@ -293,6 +384,10 @@ private:
     QQuickItem *scene_ = nullptr;
     wl_surface *surface_ = nullptr;
     zwlr_layer_surface_v1 *layerSurface_ = nullptr;
+#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+    wp_fractional_scale_v1 *fractionalScale_ = nullptr;
+    wp_viewport *viewport_ = nullptr;
+#endif
     std::array<BufferSlot, kBufferCount> slots_;
     uint32_t width_ = 0, height_ = 0; // Logical layer configure dimensions.
     uint32_t bufferWidth_ = 0, bufferHeight_ = 0; // Physical pixels.
@@ -312,6 +407,10 @@ public:
         notifier_.reset();
         for (auto &output : outputs_) output->surface.reset();
         outputs_.clear();
+#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+        if (wayland_.fractionalScaleManager) wp_fractional_scale_manager_v1_destroy(wayland_.fractionalScaleManager);
+        if (wayland_.viewporter) wp_viewporter_destroy(wayland_.viewporter);
+#endif
         if (registry_) wl_registry_destroy(registry_);
         if (wayland_.layerShell) zwlr_layer_shell_v1_destroy(wayland_.layerShell);
         if (wayland_.shm) wl_shm_destroy(wayland_.shm);
@@ -339,6 +438,12 @@ public:
                     self->pendingOutputs_.push_back({name, qMin(version, 4u)});
                 else if (std::strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0 && version >= 4)
                     wayland.layerShell = static_cast<zwlr_layer_shell_v1 *>(wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, 4));
+#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+                else if (std::strcmp(interface, wp_fractional_scale_manager_v1_interface.name) == 0 && !wayland.fractionalScaleManager)
+                    wayland.fractionalScaleManager = static_cast<wp_fractional_scale_manager_v1 *>(wl_registry_bind(registry, name, &wp_fractional_scale_manager_v1_interface, 1));
+                else if (std::strcmp(interface, wp_viewporter_interface.name) == 0 && !wayland.viewporter)
+                    wayland.viewporter = static_cast<wp_viewporter *>(wl_registry_bind(registry, name, &wp_viewporter_interface, 1));
+#endif
             },
             [](void *data, wl_registry *, uint32_t name) {
                 static_cast<LayerShellProof *>(data)->outputRemoved(name);
@@ -390,7 +495,7 @@ private:
         uint32_t globalName;
         wl_output *proxy;
         WaylandState *wayland;
-        int32_t scale = 1;
+        OutputScale scale;
         int32_t pendingScale = 1;
         bool ready = false;
         bool needsSurface = true;
@@ -399,9 +504,9 @@ private:
 
         void done() {
             ready = true;
-            if (scale == pendingScale) return;
-            scale = pendingScale;
-            if (surface && !surface->retired()) {
+            if (scale.integer == pendingScale) return;
+            scale.integer = pendingScale;
+            if (surface && !surface->retired() && !surface->hasPreferredScale()) {
                 // Stop redraw/configure callbacks immediately, but leave the
                 // owner and its listener addresses alive until dispatch ends.
                 surface->retire();

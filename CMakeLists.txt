@@ -7,6 +7,12 @@ set(CMAKE_AUTOMOC ON)
 option(MERIDIAN_WITH_LAYER_SHELL
   "Build the opt-in Wayland layer-shell wallpaper renderer"
   OFF)
+option(MERIDIAN_WITH_FRACTIONAL_SCALE
+  "Enable optional fractional-scale/viewporter support in the layer-shell renderer"
+  OFF)
+if(MERIDIAN_WITH_FRACTIONAL_SCALE AND NOT MERIDIAN_WITH_LAYER_SHELL)
+  message(FATAL_ERROR "MERIDIAN_WITH_FRACTIONAL_SCALE=ON requires MERIDIAN_WITH_LAYER_SHELL=ON.")
+endif()
 
 find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Quick Qml Test)
 qt_add_executable(meridian src/main.cpp src/atlas.cpp src/atlas.h src/solar.h src/clock.h)
@@ -133,6 +139,39 @@ if(MERIDIAN_WITH_LAYER_SHELL)
   target_include_directories(meridian PRIVATE
     "${MERIDIAN_LAYER_SHELL_GENERATED_DIR}")
   target_link_libraries(meridian PRIVATE PkgConfig::MERIDIAN_WAYLAND_CLIENT)
+
+  if(MERIDIAN_WITH_FRACTIONAL_SCALE)
+    foreach(protocol IN ITEMS fractional-scale-v1 viewporter)
+      if(protocol STREQUAL "fractional-scale-v1")
+        set(protocol_xml "${MERIDIAN_WAYLAND_PROTOCOLS_DIR}/staging/fractional-scale/fractional-scale-v1.xml")
+      else()
+        set(protocol_xml "${MERIDIAN_WAYLAND_PROTOCOLS_DIR}/stable/viewporter/viewporter.xml")
+      endif()
+      if(NOT EXISTS "${protocol_xml}")
+        message(FATAL_ERROR
+          "MERIDIAN_WITH_FRACTIONAL_SCALE=ON requires ${protocol_xml}. "
+          "Install a wayland-protocols package containing this protocol or disable fractional scaling.")
+      endif()
+      set(protocol_header "${MERIDIAN_LAYER_SHELL_GENERATED_DIR}/${protocol}-client-protocol.h")
+      set(protocol_source "${MERIDIAN_LAYER_SHELL_GENERATED_DIR}/${protocol}-protocol.c")
+      add_custom_command(
+        OUTPUT "${protocol_header}" "${protocol_source}"
+        COMMAND "${CMAKE_COMMAND}" -E make_directory "${MERIDIAN_LAYER_SHELL_GENERATED_DIR}"
+        COMMAND "${MERIDIAN_WAYLAND_SCANNER}" client-header "${protocol_xml}" "${protocol_header}"
+        COMMAND "${MERIDIAN_WAYLAND_SCANNER}" private-code "${protocol_xml}" "${protocol_source}"
+        DEPENDS "${protocol_xml}"
+        VERBATIM
+        COMMENT "Generating Wayland ${protocol} client bindings")
+      list(APPEND MERIDIAN_FRACTIONAL_SCALE_BINDINGS "${protocol_header}" "${protocol_source}")
+    endforeach()
+    add_custom_target(meridian-fractional-scale-protocols DEPENDS ${MERIDIAN_FRACTIONAL_SCALE_BINDINGS})
+    foreach(target IN ITEMS meridian layer-shell-header-test)
+      add_dependencies(${target} meridian-fractional-scale-protocols)
+      target_sources(${target} PRIVATE ${MERIDIAN_FRACTIONAL_SCALE_BINDINGS})
+      target_compile_definitions(${target} PRIVATE MERIDIAN_WITH_FRACTIONAL_SCALE=1)
+    endforeach()
+  endif()
+  message(STATUS "Meridian fractional-scale support: ${MERIDIAN_WITH_FRACTIONAL_SCALE}")
 
   message(STATUS "Meridian layer-shell protocol generation: ENABLED")
   message(STATUS "  wayland-scanner: ${MERIDIAN_WAYLAND_SCANNER}")

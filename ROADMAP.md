@@ -38,8 +38,9 @@
   registry events; standalone surface-close and logical-resize recovery done)
 - Update solar shading at minute rate while keeping the clock responsive.
 - Add a Wayland background layer for wallpaper mode.
-- Support multiple monitors and per-output scale factors. (integer output
-  scales done; fractional scaling remains pending)
+- Support multiple monitors and per-output scale factors. (integer scaling
+  done; optional fractional-scale/viewporter support done; runtime hardware
+  coverage remains pending)
 - Handle suspend/resume and display hotplug without stale surfaces. (runtime
   output hotplug done; suspend/resume remains pending)
 - Define idle/lock handoff so Meridian never changes normal policy and exits

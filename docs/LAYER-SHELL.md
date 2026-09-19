@@ -153,7 +153,11 @@ dispatch returns, unless the output itself was removed. A changed logical
 configure size follows the same replacement path. Fractional scale changes remain
 future work. Integer output scale is read before the first layer commit;
 buffers use physical dimensions while the QML scene remains in logical
-coordinates, and a later integer scale change recreates only that output.
+coordinates, and a later integer scale change recreates only that output. An
+optional `MERIDIAN_WITH_FRACTIONAL_SCALE` build adds the staging
+`fractional-scale-v1` and stable `wp_viewporter` protocols, using the
+compositor's preferred scale when both globals are advertised and retaining
+the integer fallback otherwise.
 
 The remaining items below are the acceptance requirements for production use.
 
