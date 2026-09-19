@@ -30,6 +30,8 @@
   work, bounded frame allocation, protocol-version checks, and double-buffer
   coalescing included;
   multi-output lifecycle still pending)
+- Extract reusable per-output surface/buffer/render ownership while retaining
+  exactly one instance. (done; multi-output behavior remains pending)
 - Update solar shading at minute rate while keeping the clock responsive.
 - Add a Wayland background layer for wallpaper mode.
 - Support multiple monitors and per-output scale factors.

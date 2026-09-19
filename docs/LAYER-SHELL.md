@@ -137,6 +137,18 @@ The proof requires layer-shell v4 and `wl_compositor`/`wl_surface` v4 for
 allocation before copying pixels into shared memory. It uses two bounded
 `wl_shm` buffers so a compositor-held frame does not block the next minute
 update; updates coalesce until a buffer is released.
+
+The first ownership refactor is complete in `src/layer_shell.cpp`.
+`LayerShellProof` owns the connection, registry, protocol globals, first bound
+`wl_output`, event notifier, and clock connection. It creates exactly one
+`OutputSurface`, which owns its layer surface, two stable buffer slots, QML
+scene, render control, and image target. The surface borrows the output and
+connection services; it never disconnects the shared display. On teardown,
+the controller stops callbacks, destroys the surface and its buffers, then
+destroys the output/globals and disconnects. Rendering, configure handling,
+and minute-update policy remain unchanged; multiple instances and output
+lifecycle changes are still future work.
+
 The remaining items below are the acceptance requirements for production use.
 
 Add a build option such as `MERIDIAN_WITH_LAYER_SHELL`, disabled when the

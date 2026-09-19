@@ -29,56 +29,60 @@
 #include <unistd.h>
 
 #include <array>
+#include <memory>
 
 namespace {
 
 constexpr uint64_t kMaxFrameBytes = 256ull * 1024ull * 1024ull;
 
-class LayerShellProof {
+// Borrowed connection services. LayerShellProof owns these proxies and keeps
+// them alive until its OutputSurface and all callback sources are destroyed.
+struct WaylandState {
+    QGuiApplication &app;
+    wl_display *display = nullptr;
+    wl_compositor *compositor = nullptr;
+    wl_shm *shm = nullptr;
+    zwlr_layer_shell_v1 *layerShell = nullptr;
+    bool failed = false;
+
+    bool fail(const char *message) {
+        std::fprintf(stderr, "Meridian layer-shell proof: %s\n", message);
+        std::fflush(stderr);
+        failed = true;
+        app.exit(1);
+        return false;
+    }
+
+    bool flush(const char *message = "could not flush Wayland requests") {
+        if (wl_display_flush(display) < 0) return fail(message);
+        return true;
+    }
+};
+
+// One output's surface, render scene, and two stable buffer slots. Neither this
+// object nor its slots may move while Wayland listeners hold their addresses.
+class OutputSurface {
 public:
-    LayerShellProof(QGuiApplication &app, Clock &clock)
-        : app_(app), clock_(clock), renderWindow_(&renderControl_) {}
-    ~LayerShellProof() { cleanup(); }
+    OutputSurface(WaylandState &wayland, Clock &clock, wl_output *output)
+        : wayland_(wayland), clock_(clock), output_(output), renderWindow_(&renderControl_) {}
+    ~OutputSurface() { cleanup(); }
+    OutputSurface(const OutputSurface &) = delete;
+    OutputSurface &operator=(const OutputSurface &) = delete;
 
     bool start() {
-        display_ = wl_display_connect(nullptr);
-        if (!display_) return fail("could not connect to WAYLAND_DISPLAY");
-
-        registry_ = wl_display_get_registry(display_);
-        static const wl_registry_listener listener = {
-            [](void *data, wl_registry *registry, uint32_t name, const char *interface, uint32_t version) {
-                auto *self = static_cast<LayerShellProof *>(data);
-                if (std::strcmp(interface, wl_compositor_interface.name) == 0 && version >= 4)
-                    self->compositor_ = static_cast<wl_compositor *>(wl_registry_bind(registry, name, &wl_compositor_interface, 4));
-                else if (std::strcmp(interface, wl_shm_interface.name) == 0)
-                    self->shm_ = static_cast<wl_shm *>(wl_registry_bind(registry, name, &wl_shm_interface, 1));
-                else if (std::strcmp(interface, wl_output_interface.name) == 0 && !self->output_)
-                    self->output_ = static_cast<wl_output *>(wl_registry_bind(
-                        registry, name, &wl_output_interface, qMin(version, 4u)));
-                else if (std::strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0 && version >= 4)
-                    self->layerShell_ = static_cast<zwlr_layer_shell_v1 *>(wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, 4));
-            },
-            [](void *, wl_registry *, uint32_t) {}
-        };
-        wl_registry_add_listener(registry_, &listener, this);
-        if (wl_display_roundtrip(display_) < 0)
-            return fail("Wayland registry roundtrip failed");
-        if (!compositor_ || !shm_ || !output_ || !layerShell_)
-            return fail("compositor lacks wl_compositor, wl_shm, wl_output, or wlr-layer-shell v4");
-
-        surface_ = wl_compositor_create_surface(compositor_);
+        surface_ = wl_compositor_create_surface(wayland_.compositor);
         if (!surface_) return fail("could not create Wayland surface");
         layerSurface_ = zwlr_layer_shell_v1_get_layer_surface(
-            layerShell_, surface_, output_, ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND, "meridian-wallpaper-proof");
+            wayland_.layerShell, surface_, output_, ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND, "meridian-wallpaper-proof");
         if (!layerSurface_) return fail("could not create layer-shell surface");
 
         static const zwlr_layer_surface_v1_listener layerListener = {
             [](void *data, zwlr_layer_surface_v1 *surface, uint32_t serial, uint32_t width, uint32_t height) {
-                auto *self = static_cast<LayerShellProof *>(data);
+                auto *self = static_cast<OutputSurface *>(data);
                 self->configure(surface, serial, width, height);
             },
             [](void *data, zwlr_layer_surface_v1 *) {
-                auto *self = static_cast<LayerShellProof *>(data);
+                auto *self = static_cast<OutputSurface *>(data);
                 self->fail("layer-shell surface was closed");
             }
         };
@@ -88,42 +92,29 @@ public:
             ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT);
         zwlr_layer_surface_v1_set_exclusive_zone(layerSurface_, -1);
         zwlr_layer_surface_v1_set_keyboard_interactivity(layerSurface_, ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE);
-        wl_region *empty = wl_compositor_create_region(compositor_);
+        wl_region *empty = wl_compositor_create_region(wayland_.compositor);
         if (!empty) return fail("could not create empty input region");
         wl_surface_set_input_region(surface_, empty);
         wl_region_destroy(empty);
         // Required initial commit: no buffer may be attached before configure.
         wl_surface_commit(surface_);
-        if (wl_display_roundtrip(display_) < 0)
-            return fail("Wayland configure roundtrip failed");
-        if (failed_) return false;
-        if (!configured_) return fail("layer-shell surface did not configure");
-
-        notifier_ = new QSocketNotifier(wl_display_get_fd(display_), QSocketNotifier::Read, &app_);
-        QObject::connect(notifier_, &QSocketNotifier::activated, &app_, [this] {
-            if (!display_ || wl_display_dispatch(display_) < 0) {
-                fail("Wayland connection closed while dispatching events");
-                app_.exit(1);
-            }
-            wl_display_flush(display_);
-        });
-        QObject::connect(&clock_, &Clock::changed, &app_, [this] {
-            const qint64 minute = clock_.utc().toSecsSinceEpoch() / 60;
-            if (minute == lastMinute_) return;
-            lastMinute_ = minute;
-            pendingRender_ = true;
-            renderWhenReleased();
-        });
-        if (wl_display_flush(display_) < 0)
-            return fail("could not flush Wayland requests");
         return true;
+    }
+
+    bool configured() const { return configured_; }
+
+    void minuteChanged(qint64 minute) {
+        if (minute == lastMinute_ || wayland_.failed) return;
+        lastMinute_ = minute;
+        pendingRender_ = true;
+        renderWhenReleased();
     }
 
 private:
     static constexpr size_t kBufferCount = 2;
 
     struct BufferSlot {
-        LayerShellProof *owner = nullptr;
+        OutputSurface *owner = nullptr;
         wl_buffer *buffer = nullptr;
         uint32_t *pixels = nullptr;
         size_t bytes = 0;
@@ -132,16 +123,12 @@ private:
     };
 
     bool fail(const char *message) {
-        std::fprintf(stderr, "Meridian layer-shell proof: %s\n", message);
-        std::fflush(stderr);
-        failed_ = true;
-        if (started_) app_.exit(1);
-        return false;
+        return wayland_.fail(message);
     }
 
     void configure(zwlr_layer_surface_v1 *surface, uint32_t serial, uint32_t width, uint32_t height) {
         zwlr_layer_surface_v1_ack_configure(surface, serial);
-        if (failed_) return;
+        if (wayland_.failed) return;
         if (width == 0 || height == 0 || width > 16384 || height > 16384) {
             fail("compositor supplied an invalid layer size");
             return;
@@ -189,7 +176,7 @@ private:
                 slot.pixels = nullptr;
                 return false;
             }
-            wl_shm_pool *pool = wl_shm_create_pool(shm_, slot.fd, static_cast<int32_t>(bytes));
+            wl_shm_pool *pool = wl_shm_create_pool(wayland_.shm, slot.fd, static_cast<int32_t>(bytes));
             if (!pool) return false;
             slot.buffer = wl_shm_pool_create_buffer(
                 pool, 0, width_, height_, static_cast<int32_t>(stride), WL_SHM_FORMAT_XRGB8888);
@@ -201,7 +188,7 @@ private:
     }
 
     void renderWhenReleased() {
-        if (!pendingRender_ || !configured_ || failed_) return;
+        if (!pendingRender_ || !configured_ || wayland_.failed) return;
 
         size_t nextSlot = kBufferCount;
         for (size_t i = 0; i < kBufferCount; ++i) {
@@ -223,7 +210,7 @@ private:
         wl_surface_attach(surface_, slots_[nextSlot].buffer, 0, 0);
         wl_surface_damage_buffer(surface_, 0, 0, width_, height_);
         wl_surface_commit(surface_);
-        if (wl_display_flush(display_) < 0) fail("could not flush redraw request");
+        wayland_.flush("could not flush redraw request");
     }
 
     bool renderScene(BufferSlot &slot) {
@@ -255,83 +242,120 @@ private:
     }
 
     void cleanup() {
-        if (notifier_) notifier_->setEnabled(false);
-        if (display_) {
-            for (BufferSlot &slot : slots_) {
-                if (slot.buffer) {
-                    wl_buffer_destroy(slot.buffer);
-                    slot.buffer = nullptr;
-                }
-            }
-            if (layerSurface_) {
-                zwlr_layer_surface_v1_destroy(layerSurface_);
-                layerSurface_ = nullptr;
-            }
-            if (surface_) {
-                wl_surface_destroy(surface_);
-                surface_ = nullptr;
-            }
-            if (output_) {
-                wl_output_destroy(output_);
-                output_ = nullptr;
-            }
-            if (registry_) {
-                wl_registry_destroy(registry_);
-                registry_ = nullptr;
-            }
-            if (layerShell_) {
-                zwlr_layer_shell_v1_destroy(layerShell_);
-                layerShell_ = nullptr;
-            }
-            if (shm_) {
-                wl_shm_destroy(shm_);
-                shm_ = nullptr;
-            }
-            if (compositor_) {
-                wl_compositor_destroy(compositor_);
-                compositor_ = nullptr;
-            }
-            wl_display_flush(display_);
-            wl_display_disconnect(display_);
-            display_ = nullptr;
-        }
-        if (notifier_) notifier_->deleteLater();
+        renderControl_.invalidate();
+        renderWindow_.setRenderTarget(QQuickRenderTarget());
+        if (layerSurface_) zwlr_layer_surface_v1_destroy(layerSurface_);
+        if (surface_) wl_surface_destroy(surface_);
         for (BufferSlot &slot : slots_) {
+            if (slot.buffer) wl_buffer_destroy(slot.buffer);
+            // The compositor owns its own mapping/FD for any submitted buffer.
             if (slot.pixels) munmap(slot.pixels, slot.bytes);
             if (slot.fd >= 0) close(slot.fd);
-            slot.pixels = nullptr;
-            slot.fd = -1;
         }
     }
 
-    QGuiApplication &app_;
+    WaylandState &wayland_;
     Clock &clock_;
+    wl_output *output_; // Borrowed; the controller destroys it after this object.
     QQuickRenderControl renderControl_;
+    QImage image_; // Must outlive the render window's paint-device target.
     QQuickWindow renderWindow_;
     QQmlApplicationEngine engine_;
     QQuickItem *scene_ = nullptr;
-    QImage image_;
-    QSocketNotifier *notifier_ = nullptr;
-    wl_display *display_ = nullptr;
-    wl_registry *registry_ = nullptr;
-    wl_compositor *compositor_ = nullptr;
-    wl_shm *shm_ = nullptr;
-    wl_output *output_ = nullptr;
-    zwlr_layer_shell_v1 *layerShell_ = nullptr;
     wl_surface *surface_ = nullptr;
     zwlr_layer_surface_v1 *layerSurface_ = nullptr;
     std::array<BufferSlot, kBufferCount> slots_;
     uint32_t width_ = 0, height_ = 0;
-    bool configured_ = false, failed_ = false, started_ = true;
+    bool configured_ = false;
     bool pendingRender_ = false;
     qint64 lastMinute_ = -1;
+};
+
+class LayerShellProof : public QObject {
+public:
+    LayerShellProof(QGuiApplication &app, Clock &clock) : wayland_{app}, clock_(clock) {}
+    ~LayerShellProof() override {
+        // Stop callback delivery before destroying their per-output owners.
+        QObject::disconnect(clockConnection_);
+        notifier_.reset();
+        outputSurface_.reset();
+        if (output_) wl_output_destroy(output_);
+        if (registry_) wl_registry_destroy(registry_);
+        if (wayland_.layerShell) zwlr_layer_shell_v1_destroy(wayland_.layerShell);
+        if (wayland_.shm) wl_shm_destroy(wayland_.shm);
+        if (wayland_.compositor) wl_compositor_destroy(wayland_.compositor);
+        if (wayland_.display) {
+            wl_display_flush(wayland_.display);
+            wl_display_disconnect(wayland_.display);
+        }
+    }
+
+    bool start() {
+        wayland_.display = wl_display_connect(nullptr);
+        if (!wayland_.display) return wayland_.fail("could not connect to WAYLAND_DISPLAY");
+        registry_ = wl_display_get_registry(wayland_.display);
+        if (!registry_) return wayland_.fail("could not get Wayland registry");
+        static const wl_registry_listener listener = {
+            [](void *data, wl_registry *registry, uint32_t name, const char *interface, uint32_t version) {
+                auto *self = static_cast<LayerShellProof *>(data);
+                auto &wayland = self->wayland_;
+                if (std::strcmp(interface, wl_compositor_interface.name) == 0 && version >= 4)
+                    wayland.compositor = static_cast<wl_compositor *>(wl_registry_bind(registry, name, &wl_compositor_interface, 4));
+                else if (std::strcmp(interface, wl_shm_interface.name) == 0)
+                    wayland.shm = static_cast<wl_shm *>(wl_registry_bind(registry, name, &wl_shm_interface, 1));
+                else if (std::strcmp(interface, wl_output_interface.name) == 0 && !self->output_)
+                    self->output_ = static_cast<wl_output *>(wl_registry_bind(
+                        registry, name, &wl_output_interface, qMin(version, 4u)));
+                else if (std::strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0 && version >= 4)
+                    wayland.layerShell = static_cast<zwlr_layer_shell_v1 *>(wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, 4));
+            },
+            [](void *, wl_registry *, uint32_t) {} // No dynamic output removal yet.
+        };
+        wl_registry_add_listener(registry_, &listener, this);
+        if (wl_display_roundtrip(wayland_.display) < 0)
+            return wayland_.fail("Wayland registry roundtrip failed");
+        if (!wayland_.compositor || !wayland_.shm || !output_ || !wayland_.layerShell)
+            return wayland_.fail("compositor lacks wl_compositor, wl_shm, wl_output, or wlr-layer-shell v4");
+
+        // This refactor deliberately retains exactly one output instance.
+        outputSurface_ = std::make_unique<OutputSurface>(wayland_, clock_, output_);
+        if (!outputSurface_->start()) return false;
+        if (wl_display_roundtrip(wayland_.display) < 0)
+            return wayland_.fail("Wayland configure roundtrip failed");
+        if (wayland_.failed) return false;
+        if (!outputSurface_->configured()) return wayland_.fail("layer-shell surface did not configure");
+
+        notifier_ = std::make_unique<QSocketNotifier>(wl_display_get_fd(wayland_.display), QSocketNotifier::Read);
+        QObject::connect(notifier_.get(), &QSocketNotifier::activated, this, [this] {
+            if (wl_display_dispatch(wayland_.display) < 0) {
+                wayland_.fail("Wayland connection closed while dispatching events");
+                notifier_->setEnabled(false);
+                return;
+            }
+            wl_display_flush(wayland_.display);
+        });
+        clockConnection_ = QObject::connect(&clock_, &Clock::changed, this, [this] {
+            const qint64 minute = clock_.utc().toSecsSinceEpoch() / 60;
+            outputSurface_->minuteChanged(minute);
+        });
+        return wayland_.flush();
+    }
+
+private:
+    WaylandState wayland_;
+    Clock &clock_;
+    wl_registry *registry_ = nullptr;
+    wl_output *output_ = nullptr;
+    std::unique_ptr<OutputSurface> outputSurface_;
+    std::unique_ptr<QSocketNotifier> notifier_;
+    QMetaObject::Connection clockConnection_;
 };
 
 } // namespace
 
 int runLayerShellProof(QGuiApplication &app, Clock &clock) {
     QQuickWindow::setGraphicsApi(QSGRendererInterface::Software);
-    LayerShellProof proof(app,clock);
+    LayerShellProof proof(app, clock);
     if (!proof.start()) return 2;
     return app.exec();
 }
