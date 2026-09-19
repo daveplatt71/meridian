@@ -29,6 +29,7 @@
 #include <unistd.h>
 
 #include <array>
+#include <algorithm>
 #include <memory>
 #include <vector>
 
@@ -84,7 +85,9 @@ public:
             },
             [](void *data, zwlr_layer_surface_v1 *) {
                 auto *self = static_cast<OutputSurface *>(data);
-                self->fail("layer-shell surface was closed");
+                // The controller destroys this owner after dispatch returns.
+                // A close commonly accompanies output removal, in either order.
+                self->retire();
             }
         };
         zwlr_layer_surface_v1_add_listener(layerSurface_, &layerListener, this);
@@ -103,9 +106,11 @@ public:
     }
 
     bool configured() const { return configured_; }
+    bool retired() const { return retired_; }
+    void retire() { retired_ = true; pendingRender_ = false; }
 
     void minuteChanged(qint64 minute) {
-        if (minute == lastMinute_ || wayland_.failed) return;
+        if (minute == lastMinute_ || retired_ || wayland_.failed) return;
         lastMinute_ = minute;
         pendingRender_ = true;
         renderWhenReleased();
@@ -128,8 +133,8 @@ private:
     }
 
     void configure(zwlr_layer_surface_v1 *surface, uint32_t serial, uint32_t width, uint32_t height) {
+        if (retired_ || wayland_.failed) return;
         zwlr_layer_surface_v1_ack_configure(surface, serial);
-        if (wayland_.failed) return;
         if (width == 0 || height == 0 || width > 16384 || height > 16384) {
             fail("compositor supplied an invalid layer size");
             return;
@@ -189,7 +194,7 @@ private:
     }
 
     void renderWhenReleased() {
-        if (!pendingRender_ || !configured_ || wayland_.failed) return;
+        if (!pendingRender_ || !configured_ || retired_ || wayland_.failed) return;
 
         size_t nextSlot = kBufferCount;
         for (size_t i = 0; i < kBufferCount; ++i) {
@@ -268,6 +273,7 @@ private:
     std::array<BufferSlot, kBufferCount> slots_;
     uint32_t width_ = 0, height_ = 0;
     bool configured_ = false;
+    bool retired_ = false;
     bool pendingRender_ = false;
     qint64 lastMinute_ = -1;
 };
@@ -279,9 +285,8 @@ public:
         // Stop callback delivery before destroying per-output owners.
         QObject::disconnect(clockConnection_);
         notifier_.reset();
-        outputSurfaces_.clear();
-        for (wl_output *output : outputs_)
-            if (output) wl_output_destroy(output);
+        for (auto &output : outputs_) output->surface.reset();
+        outputs_.clear();
         if (registry_) wl_registry_destroy(registry_);
         if (wayland_.layerShell) zwlr_layer_shell_v1_destroy(wayland_.layerShell);
         if (wayland_.shm) wl_shm_destroy(wayland_.shm);
@@ -306,30 +311,31 @@ public:
                 else if (std::strcmp(interface, wl_shm_interface.name) == 0)
                     wayland.shm = static_cast<wl_shm *>(wl_registry_bind(registry, name, &wl_shm_interface, 1));
                 else if (std::strcmp(interface, wl_output_interface.name) == 0)
-                    self->outputs_.push_back(static_cast<wl_output *>(wl_registry_bind(
-                        registry, name, &wl_output_interface, qMin(version, 4u))));
+                    self->pendingOutputs_.push_back({name, qMin(version, 4u)});
                 else if (std::strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0 && version >= 4)
                     wayland.layerShell = static_cast<zwlr_layer_shell_v1 *>(wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, 4));
             },
-            [](void *, wl_registry *, uint32_t) {} // No dynamic output removal yet.
+            [](void *data, wl_registry *, uint32_t name) {
+                static_cast<LayerShellProof *>(data)->outputRemoved(name);
+            }
         };
         wl_registry_add_listener(registry_, &listener, this);
         if (wl_display_roundtrip(wayland_.display) < 0)
             return wayland_.fail("Wayland registry roundtrip failed");
-        if (!wayland_.compositor || !wayland_.shm || outputs_.empty() || !wayland_.layerShell)
+        if (!wayland_.compositor || !wayland_.shm || !wayland_.layerShell)
             return wayland_.fail("compositor lacks wl_compositor, wl_shm, wl_output, or wlr-layer-shell v4");
 
-        outputSurfaces_.reserve(outputs_.size());
-        for (wl_output *output : outputs_) {
-            auto surface = std::make_unique<OutputSurface>(wayland_, clock_, output);
-            if (!surface->start()) return false;
-            outputSurfaces_.push_back(std::move(surface));
-        }
+        if (!applyOutputChanges()) return false;
+        if (outputs_.empty()) return wayland_.fail("compositor advertises no wl_output");
         if (wl_display_roundtrip(wayland_.display) < 0)
             return wayland_.fail("Wayland configure roundtrip failed");
         if (wayland_.failed) return false;
-        for (const auto &surface : outputSurfaces_)
-            if (!surface->configured()) return wayland_.fail("layer-shell surface did not configure");
+        for (const auto &output : outputs_)
+            if (!output->surface->retired() && !output->surface->configured())
+                return wayland_.fail("layer-shell surface did not configure");
+        // Changes arriving during the configure roundtrip follow the same path
+        // as runtime hotplug. New surfaces configure asynchronously below.
+        if (!applyOutputChanges()) return false;
 
         notifier_ = std::make_unique<QSocketNotifier>(wl_display_get_fd(wayland_.display), QSocketNotifier::Read);
         QObject::connect(notifier_.get(), &QSocketNotifier::activated, this, [this] {
@@ -338,22 +344,86 @@ public:
                 notifier_->setEnabled(false);
                 return;
             }
-            wl_display_flush(wayland_.display);
+            if (!applyOutputChanges() || !wayland_.flush())
+                notifier_->setEnabled(false);
         });
         clockConnection_ = QObject::connect(&clock_, &Clock::changed, this, [this] {
             const qint64 minute = clock_.utc().toSecsSinceEpoch() / 60;
-            for (const auto &surface : outputSurfaces_)
-                surface->minuteChanged(minute);
+            for (const auto &output : outputs_)
+                if (output->surface) output->surface->minuteChanged(minute);
         });
         return wayland_.flush();
     }
 
 private:
+    struct Output {
+        uint32_t globalName;
+        wl_output *proxy;
+        std::unique_ptr<OutputSurface> surface;
+
+        ~Output() {
+            surface.reset(); // The surface borrows proxy; destroy it first.
+            if (wl_output_get_version(proxy) >= WL_OUTPUT_RELEASE_SINCE_VERSION)
+                wl_output_release(proxy);
+            else
+                wl_output_destroy(proxy);
+        }
+    };
+
+    struct OutputChange {
+        uint32_t globalName;
+        uint32_t version; // Zero means removal; wl_output versions start at one.
+    };
+
+    void outputRemoved(uint32_t name) {
+        // Cancel an advertisement withdrawn in this dispatch before binding it.
+        pendingOutputs_.erase(std::remove_if(pendingOutputs_.begin(), pendingOutputs_.end(),
+            [name](const OutputChange &change) {
+                return change.globalName == name && change.version != 0;
+            }), pendingOutputs_.end());
+        pendingOutputs_.push_back({name, 0});
+        for (const auto &output : outputs_)
+            if (output->globalName == name && output->surface) output->surface->retire();
+    }
+
+    bool applyOutputChanges() {
+        if (wayland_.failed) return false;
+        // Only called after a roundtrip/dispatch returns, never from a Wayland
+        // callback or the clock's surface iteration. Listener addresses remain
+        // valid throughout delivery of close/configure/buffer-release events.
+        for (auto &output : outputs_)
+            if (output->surface && output->surface->retired()) output->surface.reset();
+
+        std::vector<OutputChange> changes;
+        changes.swap(pendingOutputs_);
+        for (const OutputChange &change : changes) {
+            auto found = std::find_if(outputs_.begin(), outputs_.end(),
+                [&change](const auto &output) { return output->globalName == change.globalName; });
+            if (change.version == 0) {
+                if (found != outputs_.end()) outputs_.erase(found);
+                continue;
+            }
+            if (found != outputs_.end()) continue;
+            auto *proxy = static_cast<wl_output *>(wl_registry_bind(
+                registry_, change.globalName, &wl_output_interface, change.version));
+            if (!proxy) return wayland_.fail("could not bind advertised wl_output");
+            auto output = std::make_unique<Output>();
+            output->globalName = change.globalName;
+            output->proxy = proxy;
+            output->surface = std::make_unique<OutputSurface>(wayland_, clock_, proxy);
+            outputs_.push_back(std::move(output));
+            if (!outputs_.back()->surface->start()) return false;
+        }
+        // With no outputs, retain only the connection/clock and wait for a new
+        // advertisement. No buffers or render scenes remain after unplugging.
+        return true;
+    }
+
     WaylandState wayland_;
     Clock &clock_;
     wl_registry *registry_ = nullptr;
-    std::vector<wl_output *> outputs_;
-    std::vector<std::unique_ptr<OutputSurface>> outputSurfaces_;
+    std::vector<std::unique_ptr<Output>> outputs_;
+    std::vector<OutputChange> pendingOutputs_;
     std::unique_ptr<QSocketNotifier> notifier_;
     QMetaObject::Connection clockConnection_;
 };

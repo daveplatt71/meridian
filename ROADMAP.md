@@ -33,7 +33,10 @@
 - Extract reusable per-output surface/buffer/render ownership while retaining
   exactly one instance. (done; multi-output behavior remains pending)
 - Create one static `OutputSurface` per initially advertised `wl_output`.
-  (done; hotplug, removal, and scale changes remain pending)
+  (done)
+- Handle output add/remove events without stale surfaces. (done for runtime
+  registry events; scale changes and standalone surface-close recovery remain
+  pending)
 - Update solar shading at minute rate while keeping the clock responsive.
 - Add a Wayland background layer for wallpaper mode.
 - Support multiple monitors and per-output scale factors.

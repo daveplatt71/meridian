@@ -145,8 +145,12 @@ one `OutputSurface` per initial output; each owns its layer surface, two stable
 buffer slots, QML scene, render control, and image target. The surfaces borrow
 the output and connection services; they never disconnect the shared display.
 On teardown, the controller stops callbacks, destroys all surfaces and their
-buffers, then destroys the output/globals and disconnects. Output add/remove,
-hotplug, and scale changes remain future work.
+buffers, then destroys the output/globals and disconnects. Runtime output
+add/remove is handled after registry dispatch returns; removing the last output
+leaves the connection alive waiting for a later output advertisement. A
+standalone layer-surface `closed` event retires that surface and waits for the
+output to be re-advertised before recreating it. Fractional scale changes
+remain future work.
 
 The remaining items below are the acceptance requirements for production use.
 
