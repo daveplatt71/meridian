@@ -48,10 +48,13 @@ public:
         static const wl_registry_listener listener = {
             [](void *data, wl_registry *registry, uint32_t name, const char *interface, uint32_t version) {
                 auto *self = static_cast<LayerShellProof *>(data);
-                if (std::strcmp(interface, wl_compositor_interface.name) == 0)
-                    self->compositor_ = static_cast<wl_compositor *>(wl_registry_bind(registry, name, &wl_compositor_interface, qMin(version, 4u)));
+                if (std::strcmp(interface, wl_compositor_interface.name) == 0 && version >= 4)
+                    self->compositor_ = static_cast<wl_compositor *>(wl_registry_bind(registry, name, &wl_compositor_interface, 4));
                 else if (std::strcmp(interface, wl_shm_interface.name) == 0)
                     self->shm_ = static_cast<wl_shm *>(wl_registry_bind(registry, name, &wl_shm_interface, 1));
+                else if (std::strcmp(interface, wl_output_interface.name) == 0 && !self->output_)
+                    self->output_ = static_cast<wl_output *>(wl_registry_bind(
+                        registry, name, &wl_output_interface, qMin(version, 4u)));
                 else if (std::strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0 && version >= 4)
                     self->layerShell_ = static_cast<zwlr_layer_shell_v1 *>(wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, 4));
             },
@@ -60,13 +63,13 @@ public:
         wl_registry_add_listener(registry_, &listener, this);
         if (wl_display_roundtrip(display_) < 0)
             return fail("Wayland registry roundtrip failed");
-        if (!compositor_ || !shm_ || !layerShell_)
-            return fail("compositor lacks wl_compositor, wl_shm, or wlr-layer-shell v4");
+        if (!compositor_ || !shm_ || !output_ || !layerShell_)
+            return fail("compositor lacks wl_compositor, wl_shm, wl_output, or wlr-layer-shell v4");
 
         surface_ = wl_compositor_create_surface(compositor_);
         if (!surface_) return fail("could not create Wayland surface");
         layerSurface_ = zwlr_layer_shell_v1_get_layer_surface(
-            layerShell_, surface_, nullptr, ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND, "meridian-wallpaper-proof");
+            layerShell_, surface_, output_, ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND, "meridian-wallpaper-proof");
         if (!layerSurface_) return fail("could not create layer-shell surface");
 
         static const zwlr_layer_surface_v1_listener layerListener = {
@@ -268,6 +271,10 @@ private:
                 wl_surface_destroy(surface_);
                 surface_ = nullptr;
             }
+            if (output_) {
+                wl_output_destroy(output_);
+                output_ = nullptr;
+            }
             if (registry_) {
                 wl_registry_destroy(registry_);
                 registry_ = nullptr;
@@ -309,6 +316,7 @@ private:
     wl_registry *registry_ = nullptr;
     wl_compositor *compositor_ = nullptr;
     wl_shm *shm_ = nullptr;
+    wl_output *output_ = nullptr;
     zwlr_layer_shell_v1 *layerShell_ = nullptr;
     wl_surface *surface_ = nullptr;
     zwlr_layer_surface_v1 *layerSurface_ = nullptr;

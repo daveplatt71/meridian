@@ -128,14 +128,15 @@ or changing Omarchy settings.
 
 ### Phase 1: raw layer-shell proof of life
 
-Current status: the repository now has an opt-in one-output proof. It creates
-the real background surface and renders the QML map into its first frame. It
-redraws when the UTC minute changes, but does not yet manage multiple outputs.
-The proof requires layer-shell protocol version 4 for `damage_buffer`, caps
-individual frames at 256 MiB, and rejects failed image allocation before
-copying pixels into shared memory. It uses two bounded `wl_shm` buffers so a
-compositor-held frame does not block the next minute update; updates coalesce
-until a buffer is released.
+Current status: the repository now has an opt-in one-output proof. It binds
+the first advertised `wl_output`, creates the real background surface for that
+output, and renders the QML map into its first frame. It redraws when the UTC
+minute changes, but does not yet manage multiple outputs.
+The proof requires layer-shell v4 and `wl_compositor`/`wl_surface` v4 for
+`damage_buffer`, caps individual frames at 256 MiB, and rejects failed image
+allocation before copying pixels into shared memory. It uses two bounded
+`wl_shm` buffers so a compositor-held frame does not block the next minute
+update; updates coalesce until a buffer is released.
 The remaining items below are the acceptance requirements for production use.
 
 Add a build option such as `MERIDIAN_WITH_LAYER_SHELL`, disabled when the

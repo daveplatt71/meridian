@@ -142,9 +142,10 @@ screensaver identity. No desktop configuration or security policy is changed.
 The repository currently contains an optional, CI-tested one-output
 Wayland layer-shell proof. It is disabled by default. When enabled,
 `--wallpaper-layer` creates a real background surface with an empty input
-region and renders the Meridian map into it. This first adapter renders the
-map on one output and redraws only when the UTC minute changes. It requires
-layer-shell v4 and bounds shared-memory frame allocation; multi-monitor
+region and renders the Meridian map into it. This first adapter binds the
+first advertised `wl_output`, renders the map on that one output, and redraws
+only when the UTC minute changes. It requires
+layer-shell v4 and `wl_compositor` v4, and bounds shared-memory frame allocation; multi-monitor
 support and full resume/hotplug lifecycle handling are still pending. The
 layer-shell proof also uses two bounded shared-memory buffers and coalesces
 updates while the compositor holds both. The existing
