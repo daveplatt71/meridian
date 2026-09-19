@@ -150,7 +150,9 @@ add/remove is handled after registry dispatch returns; removing the last output
 leaves the connection alive waiting for a later output advertisement. A
 standalone layer-surface `closed` event retires that surface and waits for the
 output to be re-advertised before recreating it. Fractional scale changes
-remain future work.
+remain future work. Integer output scale is read before the first layer commit;
+buffers use physical dimensions while the QML scene remains in logical
+coordinates, and a later integer scale change recreates only that output.
 
 The remaining items below are the acceptance requirements for production use.
 

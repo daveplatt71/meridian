@@ -11,7 +11,9 @@ It does **not** currently replace the Omarchy screensaver or lock screen.
 This is an early public-preview candidate. The current release is a standalone
 clock that can be launched manually in preview, screensaver, or wallpaper
 renderer modes. Omarchy idle integration, true Wayland background layering,
-multi-monitor launch, and lock-screen handoff are planned follow-up work.
+and initial multi-monitor layer-shell launch are implemented behind the
+optional `--wallpaper-layer` build; Omarchy idle integration, suspend/resume,
+and lock-screen handoff remain planned follow-up work.
 
 The companion static Omarchy theme is published at
 [daveplatt71/meridian-theme](https://github.com/daveplatt71/meridian-theme).
@@ -139,14 +141,16 @@ screensaver identity. No desktop configuration or security policy is changed.
 
 ## Layer-shell development status
 
-The repository currently contains an optional, CI-tested one-output
-Wayland layer-shell proof. It is disabled by default. When enabled,
+The repository currently contains an optional, CI-tested Wayland layer-shell
+renderer. It is disabled by default. When enabled,
 `--wallpaper-layer` creates a real background surface with an empty input
-region and renders the Meridian map into it. This first adapter binds the
-first advertised `wl_output`, renders the map on that one output, and redraws
-only when the UTC minute changes. It requires
-layer-shell v4 and `wl_compositor` v4, and bounds shared-memory frame allocation; multi-monitor
-support and full resume/hotplug lifecycle handling are still pending. The
+region and renders the Meridian map into it. It binds every initially
+advertised `wl_output`, creates one surface per output, handles runtime output
+add/remove, and redraws each output when the UTC minute changes. Integer output
+scales are applied to physical buffers while QML remains logical; fractional
+scaling, suspend/resume, and standalone close recovery are still pending. It
+requires layer-shell v4 and `wl_compositor` v4, and bounds shared-memory frame
+allocation. The
 layer-shell proof also uses two bounded shared-memory buffers and coalesces
 updates while the compositor holds both. The existing
 `--wallpaper` mode remains a normal fullscreen renderer preview.

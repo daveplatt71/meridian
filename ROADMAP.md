@@ -35,12 +35,13 @@
 - Create one static `OutputSurface` per initially advertised `wl_output`.
   (done)
 - Handle output add/remove events without stale surfaces. (done for runtime
-  registry events; scale changes and standalone surface-close recovery remain
-  pending)
+  registry events; standalone surface-close recovery remains pending)
 - Update solar shading at minute rate while keeping the clock responsive.
 - Add a Wayland background layer for wallpaper mode.
-- Support multiple monitors and per-output scale factors.
-- Handle suspend/resume and display hotplug without stale surfaces.
+- Support multiple monitors and per-output scale factors. (integer output
+  scales done; fractional scaling remains pending)
+- Handle suspend/resume and display hotplug without stale surfaces. (runtime
+  output hotplug done; suspend/resume remains pending)
 - Define idle/lock handoff so Meridian never changes normal policy and exits
   cleanly when the lock screen takes over.
 
