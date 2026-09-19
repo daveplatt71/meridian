@@ -142,9 +142,9 @@ screensaver identity. No desktop configuration or security policy is changed.
 The repository currently contains an optional, CI-tested one-output
 Wayland layer-shell proof. It is disabled by default. When enabled,
 `--wallpaper-layer` creates a real background surface with an empty input
-region and renders the Meridian map into it. This first adapter renders an
-initial frame on one output; minute redraw, multi-monitor support, and full
-resume/hotplug lifecycle handling are still pending. The existing
+region and renders the Meridian map into it. This first adapter renders the
+map on one output and redraws only when the UTC minute changes; multi-monitor
+support and full resume/hotplug lifecycle handling are still pending. The existing
 `--wallpaper` mode remains a normal fullscreen renderer preview.
 
 To validate the optional developer feature locally, install

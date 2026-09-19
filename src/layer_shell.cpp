@@ -99,6 +99,13 @@ public:
             }
             wl_display_flush(display_);
         });
+        QObject::connect(&clock_, &Clock::changed, &app_, [this] {
+            const qint64 minute = clock_.utc().toSecsSinceEpoch() / 60;
+            if (minute == lastMinute_) return;
+            lastMinute_ = minute;
+            pendingRender_ = true;
+            renderWhenReleased();
+        });
         if (wl_display_flush(display_) < 0)
             return fail("could not flush Wayland requests");
         return true;
@@ -130,6 +137,9 @@ private:
             fail("could not render MeridianScene into wl_shm buffer");
             return;
         }
+        lastMinute_ = clock_.utc().toSecsSinceEpoch() / 60;
+        pendingRender_ = false;
+        bufferReleased_ = false;
         wl_surface_attach(surface_, buffer_, 0, 0);
         wl_surface_damage_buffer(surface_, 0, 0, width_, height_);
         wl_surface_commit(surface_);
@@ -152,11 +162,27 @@ private:
         if (!buffer_) return false;
         static const wl_buffer_listener bufferListener = {
             [](void *data, wl_buffer *) {
-                static_cast<LayerShellProof *>(data)->bufferReleased_ = true;
+                auto *self = static_cast<LayerShellProof *>(data);
+                self->bufferReleased_ = true;
+                self->renderWhenReleased();
             }
         };
         wl_buffer_add_listener(buffer_, &bufferListener, this);
         return true;
+    }
+
+    void renderWhenReleased() {
+        if (!pendingRender_ || !bufferReleased_ || !configured_ || failed_) return;
+        if (!renderScene()) {
+            fail("could not redraw MeridianScene");
+            return;
+        }
+        pendingRender_ = false;
+        bufferReleased_ = false;
+        wl_surface_attach(surface_, buffer_, 0, 0);
+        wl_surface_damage_buffer(surface_, 0, 0, width_, height_);
+        wl_surface_commit(surface_);
+        if (wl_display_flush(display_) < 0) fail("could not flush redraw request");
     }
 
     bool renderScene() {
@@ -221,6 +247,8 @@ private:
     uint32_t width_ = 0, height_ = 0;
     bool configured_ = false, failed_ = false, started_ = true;
     bool bufferReleased_ = false;
+    bool pendingRender_ = false;
+    qint64 lastMinute_ = -1;
 };
 
 } // namespace

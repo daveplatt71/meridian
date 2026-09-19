@@ -130,8 +130,8 @@ or changing Omarchy settings.
 
 Current status: the repository now has an opt-in one-output proof. It creates
 the real background surface and renders the QML map into its first frame. It
-does not yet redraw on minute clock changes or manage multiple outputs. The
-remaining items below are the acceptance requirements for production use.
+redraws when the UTC minute changes, but does not yet manage multiple outputs.
+The remaining items below are the acceptance requirements for production use.
 
 Add a build option such as `MERIDIAN_WITH_LAYER_SHELL`, disabled when the
 optional protocol/toolchain pieces are unavailable. Pin and license the
