@@ -30,6 +30,8 @@
 
 namespace {
 
+constexpr uint64_t kMaxFrameBytes = 256ull * 1024ull * 1024ull;
+
 class LayerShellProof {
 public:
     LayerShellProof(QGuiApplication &app, Clock &clock)
@@ -48,8 +50,8 @@ public:
                     self->compositor_ = static_cast<wl_compositor *>(wl_registry_bind(registry, name, &wl_compositor_interface, qMin(version, 4u)));
                 else if (std::strcmp(interface, wl_shm_interface.name) == 0)
                     self->shm_ = static_cast<wl_shm *>(wl_registry_bind(registry, name, &wl_shm_interface, 1));
-                else if (std::strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0)
-                    self->layerShell_ = static_cast<zwlr_layer_shell_v1 *>(wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, qMin(version, 4u)));
+                else if (std::strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0 && version >= 4)
+                    self->layerShell_ = static_cast<zwlr_layer_shell_v1 *>(wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, 4));
             },
             [](void *, wl_registry *, uint32_t) {}
         };
@@ -57,7 +59,7 @@ public:
         if (wl_display_roundtrip(display_) < 0)
             return fail("Wayland registry roundtrip failed");
         if (!compositor_ || !shm_ || !layerShell_)
-            return fail("compositor lacks wl_compositor, wl_shm, or wlr-layer-shell");
+            return fail("compositor lacks wl_compositor, wl_shm, or wlr-layer-shell v4");
 
         surface_ = wl_compositor_create_surface(compositor_);
         if (!surface_) return fail("could not create Wayland surface");
@@ -89,6 +91,7 @@ public:
         wl_surface_commit(surface_);
         if (wl_display_roundtrip(display_) < 0)
             return fail("Wayland configure roundtrip failed");
+        if (failed_) return false;
         if (!configured_) return fail("layer-shell surface did not configure");
 
         notifier_ = new QSocketNotifier(wl_display_get_fd(display_), QSocketNotifier::Read, &app_);
@@ -149,7 +152,7 @@ private:
     bool allocateBuffer() {
         const uint64_t stride = uint64_t(width_) * 4;
         const uint64_t bytes = stride * uint64_t(height_);
-        if (stride > INT32_MAX || bytes == 0 || bytes > SIZE_MAX) return false;
+        if (stride > INT32_MAX || bytes == 0 || bytes > kMaxFrameBytes || bytes > SIZE_MAX) return false;
         char name[] = "/meridian-layer-XXXXXX";
         fd_ = memfd_create(name, MFD_CLOEXEC);
         if (fd_ < 0 || ftruncate(fd_, static_cast<off_t>(bytes)) < 0) return false;
@@ -187,6 +190,7 @@ private:
 
     bool renderScene() {
         image_ = QImage(static_cast<int>(width_), static_cast<int>(height_), QImage::Format_ARGB32_Premultiplied);
+        if (image_.isNull()) return false;
         image_.fill(Qt::transparent);
         renderWindow_.setColor(Qt::transparent);
         renderWindow_.setRenderTarget(QQuickRenderTarget::fromPaintDevice(&image_));

@@ -27,7 +27,8 @@
 - Pin and CI-test optional `wlr-layer-shell` protocol generation. (done)
 - Add one-output layer-shell proof with empty input and safe `wl_shm`
   lifecycle. (implemented; initial and minute-based Meridian scene renders
-  work, multi-output lifecycle still pending)
+  work, bounded frame allocation and protocol-version checks included;
+  multi-output lifecycle still pending)
 - Update solar shading at minute rate while keeping the clock responsive.
 - Add a Wayland background layer for wallpaper mode.
 - Support multiple monitors and per-output scale factors.

@@ -131,6 +131,9 @@ or changing Omarchy settings.
 Current status: the repository now has an opt-in one-output proof. It creates
 the real background surface and renders the QML map into its first frame. It
 redraws when the UTC minute changes, but does not yet manage multiple outputs.
+The proof requires layer-shell protocol version 4 for `damage_buffer`, caps
+individual frames at 256 MiB, and rejects failed image allocation before
+copying pixels into shared memory.
 The remaining items below are the acceptance requirements for production use.
 
 Add a build option such as `MERIDIAN_WITH_LAYER_SHELL`, disabled when the

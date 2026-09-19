@@ -143,7 +143,8 @@ The repository currently contains an optional, CI-tested one-output
 Wayland layer-shell proof. It is disabled by default. When enabled,
 `--wallpaper-layer` creates a real background surface with an empty input
 region and renders the Meridian map into it. This first adapter renders the
-map on one output and redraws only when the UTC minute changes; multi-monitor
+map on one output and redraws only when the UTC minute changes. It requires
+layer-shell v4 and bounds shared-memory frame allocation; multi-monitor
 support and full resume/hotplug lifecycle handling are still pending. The existing
 `--wallpaper` mode remains a normal fullscreen renderer preview.
 
