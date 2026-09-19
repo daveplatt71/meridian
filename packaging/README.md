@@ -8,6 +8,10 @@ makepkg -si
 meridian --fullscreen
 ```
 
+The package enables the tested Wayland layer-shell renderer, so the installed
+binary also supports `meridian --wallpaper-layer` on compositors that provide
+layer-shell v4. The normal preview and screensaver modes remain available.
+
 The recipe lives outside the application's tracked `src/` directory. It builds
 from the parent checkout and uses makepkg's disposable `packaging/src/`
 directory, so cleanup cannot remove application source files.

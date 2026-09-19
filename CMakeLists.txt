@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
 option(MERIDIAN_WITH_LAYER_SHELL
-  "Build the opt-in one-output Wayland layer-shell proof"
+  "Build the opt-in Wayland layer-shell wallpaper renderer"
   OFF)
 
 find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Quick Qml Test)

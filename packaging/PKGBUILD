@@ -4,8 +4,8 @@ pkgrel=1
 pkgdesc='Offline vintage world-clock preview for Wayland'
 arch=('x86_64')
 license=('MIT')
-depends=('qt6-base>=6.11' 'qt6-declarative>=6.11' 'qt6-wayland>=6.11' 'noto-fonts')
-makedepends=('cmake' 'ninja')
+depends=('qt6-base>=6.11' 'qt6-declarative>=6.11' 'qt6-wayland>=6.11' 'wayland' 'noto-fonts')
+makedepends=('cmake' 'ninja' 'wayland-protocols')
 source=()
 sha256sums=()
 
@@ -15,7 +15,8 @@ build() {
     cmake -S "$startdir/.." -B "$srcdir/build" -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/usr \
-        -DCMAKE_INSTALL_LIBEXECDIR=lib
+        -DCMAKE_INSTALL_LIBEXECDIR=lib \
+        -DMERIDIAN_WITH_LAYER_SHELL=ON
     cmake --build "$srcdir/build"
 }
 
