@@ -148,9 +148,10 @@ On teardown, the controller stops callbacks, destroys all surfaces and their
 buffers, then destroys the output/globals and disconnects. Runtime output
 add/remove is handled after registry dispatch returns; removing the last output
 leaves the connection alive waiting for a later output advertisement. A
-standalone layer-surface `closed` event retires that surface and waits for the
-output to be re-advertised before recreating it. Fractional scale changes
-remain future work. Integer output scale is read before the first layer commit;
+standalone layer-surface `closed` event retires and recreates that output after
+dispatch returns, unless the output itself was removed. A changed logical
+configure size follows the same replacement path. Fractional scale changes remain
+future work. Integer output scale is read before the first layer commit;
 buffers use physical dimensions while the QML scene remains in logical
 coordinates, and a later integer scale change recreates only that output.
 
@@ -227,7 +228,10 @@ Failure must be safe and boring:
    allocation is unavailable, print one actionable diagnostic and exit
    nonzero. Do not fall back automatically to a fullscreen window.
 2. If a layer surface is closed or an output disappears, tear down that output
-   cleanly. If no outputs remain, exit without changing desktop configuration.
+   cleanly. If no outputs remain after startup, keep the connection alive for
+   a later output advertisement without changing desktop configuration.
+   Bound recovery attempts prevent repeated compositor closes from creating a
+   destroy/recreate loop.
 3. If one output fails, keep healthy outputs running only if the controller can
    prove that cleanup is independent; otherwise stop all Meridian surfaces and
    leave the existing static wallpaper intact.

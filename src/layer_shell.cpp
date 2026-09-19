@@ -85,7 +85,7 @@ public:
             },
             [](void *data, zwlr_layer_surface_v1 *) {
                 auto *self = static_cast<OutputSurface *>(data);
-                // The controller destroys this owner after dispatch returns.
+                // Recreate after dispatch unless this output was removed.
                 // A close commonly accompanies output removal, in either order.
                 self->closed_ = true;
                 self->retire();
@@ -140,11 +140,16 @@ private:
     void configure(zwlr_layer_surface_v1 *surface, uint32_t serial, uint32_t width, uint32_t height) {
         if (retired_ || wayland_.failed) return;
         zwlr_layer_surface_v1_ack_configure(surface, serial);
+        if (configured_) {
+            // Keep submitted buffers immutable. The controller replaces this
+            // owner after dispatch, and its successor waits for a fresh configure.
+            if (width != width_ || height != height_) retire();
+            return;
+        }
         if (width == 0 || height == 0 || width > 16384 || height > 16384) {
             fail("compositor supplied an invalid layer size");
             return;
         }
-        if (configured_) return;
         width_ = width;
         height_ = height;
         if (!allocateBuffers()) {
@@ -389,6 +394,7 @@ private:
         int32_t pendingScale = 1;
         bool ready = false;
         bool needsSurface = true;
+        uint32_t closeRecoveries = 0;
         std::unique_ptr<OutputSurface> surface;
 
         void done() {
@@ -435,10 +441,16 @@ private:
         // valid throughout delivery of close/configure/buffer-release events.
         for (auto &output : outputs_) {
             if (output->surface && output->surface->retired()) {
-                // A compositor close wins over a scale change in either order.
-                // Preserve standalone-close behavior: wait for re-advertisement.
-                if (output->surface->closed()) output->needsSurface = false;
+                const bool closed = output->surface->closed();
                 output->surface.reset();
+                if (closed) {
+                    // A broken compositor must not cause an endless
+                    // destroy/create loop. The output can still recover if it
+                    // is later removed and advertised again.
+                    output->needsSurface = output->closeRecoveries++ < 3;
+                } else {
+                    output->needsSurface = true;
+                }
             }
         }
 
@@ -480,6 +492,8 @@ private:
             wl_output_add_listener(proxy, &outputListener, output.get());
             outputs_.push_back(std::move(output));
         }
+        // Apply removals before creating replacements, including when a close,
+        // resize, or scale change arrived in the same dispatch as removal.
         for (auto &output : outputs_) {
             if (!output->ready || !output->needsSurface) continue;
             output->surface = std::make_unique<OutputSurface>(wayland_, clock_, output->proxy, output->scale);

@@ -148,7 +148,8 @@ region and renders the Meridian map into it. It binds every initially
 advertised `wl_output`, creates one surface per output, handles runtime output
 add/remove, and redraws each output when the UTC minute changes. Integer output
 scales are applied to physical buffers while QML remains logical; fractional
-scaling, suspend/resume, and standalone close recovery are still pending. It
+scaling and suspend/resume are still pending. Layer-surface close and logical
+resize recovery recreate only the affected output. It
 requires layer-shell v4 and `wl_compositor` v4, and bounds shared-memory frame
 allocation. The
 layer-shell proof also uses two bounded shared-memory buffers and coalesces
