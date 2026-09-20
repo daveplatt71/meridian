@@ -50,6 +50,7 @@ int main(int argc,char **argv){
     engine.rootContext()->setContextProperty("appCaptureMode",true);
     engine.rootContext()->setContextProperty("appSaverMode",false);
     engine.rootContext()->setContextProperty("appWallpaperMode",false);
+    engine.rootContext()->setContextProperty("appWindowVisible",true);
     engine.load(QUrl("qrc:/qml/Main.qml"));
     if(engine.rootObjects().isEmpty())return 1;
     auto window=qobject_cast<QQuickWindow*>(engine.rootObjects().first());
@@ -110,6 +111,7 @@ int main(int argc,char **argv){
     wallpaperEngine.rootContext()->setContextProperty("appCaptureMode",true);
     wallpaperEngine.rootContext()->setContextProperty("appSaverMode",false);
     wallpaperEngine.rootContext()->setContextProperty("appWallpaperMode",true);
+    wallpaperEngine.rootContext()->setContextProperty("appWindowVisible",true);
     wallpaperEngine.load(QUrl("qrc:/qml/Main.qml"));
     if(wallpaperEngine.rootObjects().isEmpty()){std::cerr<<"Wallpaper mode failed to load\n";return 11;}
     auto wallpaperWindow=qobject_cast<QQuickWindow*>(wallpaperEngine.rootObjects().first());

@@ -1,0 +1,6 @@
+# User-owned Meridian screensaver adapter configuration.
+# Leave MERIDIAN_BIN empty to use the first `meridian` found in PATH.
+MERIDIAN_BIN=
+MERIDIAN_FALLBACK=/usr/bin/omarchy-launch-screensaver
+MERIDIAN_OMARCHY_ENABLED=1
+MERIDIAN_SCREENSAVER_DEADLINE=5

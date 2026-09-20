@@ -3,6 +3,7 @@ import VintageAtlas 1.0
 
 Item {
     id: root
+    objectName: "meridianScene"
 
     // These properties are supplied by the visible Window wrapper today and
     // can be supplied by a future QQuickRenderControl host.

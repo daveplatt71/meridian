@@ -6,7 +6,7 @@ Window {
     id: root
     objectName: "meridianPreviewWindow"
     title: "Meridian — World Clock"
-    visible: true
+    visible: appWindowVisible
     width: 1600
     height: 700
     color: "#101714"

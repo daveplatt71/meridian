@@ -26,6 +26,16 @@ check() {
 
 package() {
     install -Dm755 "$srcdir/build/meridian" "$pkgdir/usr/bin/meridian"
+    install -Dm755 "$startdir/../integration/omarchy/omarchy-launch-screensaver" \
+        "$pkgdir/usr/share/meridian/omarchy/omarchy-launch-screensaver"
+    install -Dm755 "$startdir/../integration/omarchy/install.sh" \
+        "$pkgdir/usr/share/meridian/omarchy/install.sh"
+    install -Dm755 "$startdir/../integration/omarchy/uninstall.sh" \
+        "$pkgdir/usr/share/meridian/omarchy/uninstall.sh"
+    install -Dm644 "$startdir/../integration/omarchy/omarchy-screensaver.conf.example" \
+        "$pkgdir/usr/share/meridian/omarchy/omarchy-screensaver.conf.example"
+    install -Dm644 "$startdir/../integration/omarchy/README.md" \
+        "$pkgdir/usr/share/meridian/omarchy/README.md"
     install -Dm644 "$startdir/../LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
     install -Dm644 "$startdir/../README.md" "$pkgdir/usr/share/doc/$pkgname/README.md"
     install -Dm644 "$startdir/../assets/README.md" "$pkgdir/usr/share/doc/$pkgname/assets-README.md"

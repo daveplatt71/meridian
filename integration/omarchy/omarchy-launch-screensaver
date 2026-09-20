@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+set -u
+
+# User-owned adapter for Omarchy's idle service. Keep the stock launcher as a
+# fallback: this file must not become a prerequisite for locking the session.
+
+config_path="${MERIDIAN_OMARCHY_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/meridian/omarchy-screensaver.conf}"
+if [[ -f "$config_path" ]]; then
+  # This is deliberately a user-owned shell config, like other user command
+  # adapters. It is never written by Omarchy or by this launcher.
+  # shellcheck disable=SC1090
+  source "$config_path"
+fi
+
+meridian_enabled="${MERIDIAN_OMARCHY_ENABLED:-1}"
+meridian_bin="${MERIDIAN_BIN:-}"
+fallback="${MERIDIAN_FALLBACK:-/usr/bin/omarchy-launch-screensaver}"
+deadline="${MERIDIAN_SCREENSAVER_DEADLINE:-5}"
+
+fallback_to_stock() {
+  if [[ -x "$fallback" && "$fallback" != "$0" ]]; then
+    exec "$fallback" "$@"
+  fi
+  printf '%s\n' "Meridian screensaver unavailable and stock fallback is missing: $fallback" >&2
+  exit 1
+}
+
+abort_after_partial_launch() {
+  # Do not kill a visible saver here. Omarchy's idle service interprets the
+  # last screensaver close as user activity and cancels its lock timer.
+  printf '%s\n' "$1" >&2
+  exit 1
+}
+
+case "$meridian_enabled" in
+  0|false|no|off) fallback_to_stock "$@" ;;
+esac
+
+if [[ -z "$meridian_bin" ]]; then
+  meridian_bin="$(command -v meridian 2>/dev/null || true)"
+fi
+if [[ ! -x "$meridian_bin" ]]; then
+  fallback_to_stock "$@"
+fi
+
+# Preserve the stock toggle contract. A forced launch is still allowed when
+# Omarchy has disabled the idle screensaver.
+if ! command -v omarchy-toggle-enabled >/dev/null 2>&1 || \
+   ! command -v hyprctl >/dev/null 2>&1 || \
+   ! command -v jq >/dev/null 2>&1 || \
+   ! command -v socat >/dev/null 2>&1 || \
+   ! command -v pgrep >/dev/null 2>&1; then
+  fallback_to_stock "$@"
+fi
+if omarchy-toggle-enabled screensaver-off >/dev/null 2>&1 && [[ "${1:-}" != force ]]; then
+  exit 1
+fi
+
+# Omarchy's idle service and lock command use this identity. The explicit
+# --app-id also keeps the identity in argv so the stock pkill handoff reaches
+# direct Meridian processes, not just terminal wrappers.
+if pgrep -f '[o]rg.omarchy.screensaver' >/dev/null 2>&1; then
+  exit 0
+fi
+
+if [[ ! "$deadline" =~ ^[1-9][0-9]*$ ]]; then
+  printf '%s\n' "Invalid MERIDIAN_SCREENSAVER_DEADLINE: $deadline" >&2
+  fallback_to_stock "$@"
+fi
+
+focused="$(omarchy-hyprland-monitor-focused 2>/dev/null || true)"
+if [[ -z "$focused" ]]; then
+  fallback_to_stock "$@"
+fi
+
+mapfile -t monitors < <(hyprctl monitors -j 2>/dev/null | jq -r '.[].name' 2>/dev/null)
+if ((${#monitors[@]} == 0)); then
+  fallback_to_stock "$@"
+fi
+
+hypr_focus_monitor() {
+  local monitor=$1
+  hyprctl dispatch "hl.dsp.focus({ monitor = \"$monitor\" })" >/dev/null 2>&1 || \
+    hyprctl dispatch focusmonitor "$monitor" >/dev/null 2>&1
+}
+
+hypr_exec() {
+  local command
+  printf -v command '%q ' "$@"
+  hyprctl dispatch "hl.dsp.exec_cmd([[$command]])" >/dev/null 2>&1 || \
+    hyprctl dispatch exec -- bash -lc "$command" >/dev/null 2>&1
+}
+
+socket="${XDG_RUNTIME_DIR:-/tmp}/hypr/${HYPRLAND_INSTANCE_SIGNATURE:-}/.socket2.sock"
+exec {events}< <(socat -U - "UNIX-CONNECT:$socket")
+
+wait_for_screensaver_window() {
+  local line
+  local end=$((SECONDS + deadline))
+  while ((SECONDS < end)) && IFS= read -r -t $((end - SECONDS)) -u "$events" line; do
+    [[ "$line" == openwindow\>\>*,org.omarchy.screensaver,* ]] && return 0
+    if [[ "$line" == closewindow\>\>* ]] &&
+       ! pgrep -f -- '--omarchy-adapter' >/dev/null 2>&1; then
+      screensaver_closed=1
+      return 1
+    fi
+    if command -v omarchy-shell >/dev/null 2>&1 &&
+       [[ $(omarchy-shell lock isLocked 2>/dev/null || true) == true ]]; then
+      lock_started=1
+      return 1
+    fi
+  done
+  return 1
+}
+
+launched=0
+screensaver_closed=0
+lock_started=0
+for monitor in "${monitors[@]}"; do
+  if ((launched)) && ! pgrep -f -- '--omarchy-adapter' >/dev/null 2>&1; then
+    abort_after_partial_launch 'Meridian screensaver was dismissed during launch'
+  fi
+  if command -v omarchy-shell >/dev/null 2>&1 &&
+     [[ $(omarchy-shell lock isLocked 2>/dev/null || true) == true ]]; then
+    if ((launched)); then abort_after_partial_launch 'Omarchy lock took over during Meridian launch'; fi
+    exit 0
+  fi
+
+  hypr_focus_monitor "$monitor" || {
+    if ((launched)); then abort_after_partial_launch "Could not focus monitor $monitor"; fi
+    fallback_to_stock "$@"
+  }
+
+  hypr_exec "$meridian_bin" \
+    --screensaver \
+    --app-id=org.omarchy.screensaver \
+    --omarchy-adapter \
+    --monitor "$monitor" || {
+      if ((launched)); then abort_after_partial_launch "Could not launch Meridian on monitor $monitor"; fi
+      fallback_to_stock "$@"
+    }
+
+  if ! wait_for_screensaver_window; then
+    if ((screensaver_closed || lock_started)); then
+      if ((launched)); then abort_after_partial_launch 'Meridian screensaver closed or lock took over during launch'; fi
+      exit 0
+    fi
+    printf '%s\n' "Meridian did not map org.omarchy.screensaver on monitor $monitor" >&2
+    if ((launched)); then abort_after_partial_launch "Meridian did not map monitor $monitor"; fi
+    fallback_to_stock "$@"
+  fi
+  launched=1
+done
+
+hypr_focus_monitor "$focused" >/dev/null 2>&1 || true
+exit 0

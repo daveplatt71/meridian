@@ -6,7 +6,7 @@
 - Static map and relief resources with minute-rate solar shading and a
   second-rate clock.
 - Public standalone launch path; no Omarchy idle, lock, or screensaver
-  integration.
+  integration by default.
 
 ## Next milestone — Omarchy theme package (static preview published)
 
@@ -44,7 +44,8 @@
 - Handle suspend/resume and display hotplug without stale surfaces. (runtime
   output hotplug done; suspend/resume remains pending)
 - Define idle/lock handoff so Meridian never changes normal policy and exits
-  cleanly when the lock screen takes over.
+  cleanly when the lock screen takes over. (implemented through the opt-in
+  user-owned Omarchy launcher adapter; hardware validation remains)
 
 ## Validation and release
 

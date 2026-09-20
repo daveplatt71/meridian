@@ -1,8 +1,8 @@
 # Meridian
 
 A native, offline vintage world-clock preview for Omarchy / Wayland, inspired
-by mechanical boardroom solar clocks. First milestone: standalone preview.
-It does **not** currently replace the Omarchy screensaver or lock screen.
+by mechanical boardroom solar clocks. The standalone preview and opt-in
+Omarchy screensaver adapter are supported milestones.
 
 ![Meridian ultrawide preview](docs/preview-ultrawide.png)
 
@@ -10,10 +10,10 @@ It does **not** currently replace the Omarchy screensaver or lock screen.
 
 This is an early public-preview candidate. The current release is a standalone
 clock that can be launched manually in preview, screensaver, or wallpaper
-renderer modes. Omarchy idle integration, true Wayland background layering,
-and initial multi-monitor layer-shell launch are implemented behind the
-optional `--wallpaper-layer` build; Omarchy idle integration, suspend/resume,
-and lock-screen handoff remain planned follow-up work.
+renderer modes. The optional Omarchy screensaver integration uses a
+user-owned PATH adapter and direct per-monitor Meridian windows. True Wayland
+background layering remains separate behind the optional `--wallpaper-layer`
+build; suspend/resume and hardware coverage remain follow-up work.
 
 The companion static Omarchy theme is published at
 [daveplatt71/meridian-theme](https://github.com/daveplatt71/meridian-theme).
@@ -68,8 +68,8 @@ retain the 2:1 equirectangular map. This uses more ultrawide canvas while
 keeping the complete world visible. Equal-area projection compresses the polar
 regions rather than stretching an existing image vertically. The projection
 changes automatically on resize.
-Multi-monitor automatic launch and the compositor-specific wallpaper adapter
-are later integration milestones.
+The screensaver adapter and its installer are documented in
+[integration/omarchy/README.md](integration/omarchy/README.md).
 
 ## Arch and Omarchy installation
 
@@ -82,10 +82,11 @@ makepkg -si
 meridian --fullscreen
 ```
 
-The package installs only the application and its bundled resources. It does
-not edit Omarchy configuration, change idle or lock timings, install a system
-service, or replace the stock screensaver. Remove it with the normal Arch
-package tools.
+The package installs the application, bundled resources, and opt-in adapter
+templates. It does not edit Omarchy configuration, change idle or lock
+timings, install a system service, or replace the stock screensaver. Run the
+user-owned adapter installer explicitly, and remove the package with normal
+Arch package tools.
 
 For a clean source build, follow the CMake commands above. Package and CI
 builds use Release mode and run the full test suite before installation.
@@ -118,15 +119,15 @@ changes with time.
 1. Review the native preview's appearance with the user; refine composition.
 2. Profile GPU/CPU on the real ultrawide and test fractional scaling, suspend,
    resize, input dismissal, and optional OLED dimming/movement.
-3. Build a user-owned Omarchy integration adapter. Preserve normal idle/lock
-   timing and distinguish renderer failure from user dismissal. Never modify
-   package-owned `/usr/share/omarchy` files.
-4. Add per-monitor launch, installer/uninstaller and configuration.
+3. Validate the user-owned Omarchy integration on real multi-monitor hardware;
+   preserve idle/lock timing and distinguish renderer failure from dismissal.
 
 ## Known limitations
 
-- The current build is a standalone preview, not an idle screensaver.
-- It does not yet launch one surface per monitor.
+- The Omarchy adapter is opt-in; its installer activates the user-owned
+  launcher path, while an uninstalled system keeps the stock launcher.
+- Meridian screensaver windows are fullscreen Qt windows, not layer-shell
+  surfaces. `--wallpaper-layer` remains a separate wallpaper experiment.
 - It has not yet been validated across AMD, Intel, and NVIDIA hardware or
   across suspend/resume and monitor hotplug events.
 - The current performance record uses Qt's offscreen software backend; real
@@ -136,8 +137,9 @@ Please report failures with the Omarchy version, CPU, GPU, display layout and
 the command that was run. Include terminal output and a screenshot when
 possible.
 
-The preview deliberately uses `org.meridian.preview`, not Omarchy's tracked
-screensaver identity. No desktop configuration or security policy is changed.
+Preview windows use `org.meridian.preview`. Only `--screensaver` uses
+`org.omarchy.screensaver`, including the argv marker required by Omarchy's
+existing lock handoff. No desktop configuration or security policy is changed.
 
 ## Layer-shell development status
 
