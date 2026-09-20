@@ -9,7 +9,7 @@ This integration uses a user-owned PATH override for
 
 The installer creates `~/.local/bin/omarchy-launch-screensaver`, adds a
 managed PATH block to `~/.bashrc` before its non-interactive early return, and,
-if it is missing, creates `~/.config/meridian/omarchy-screensaver.conf`. It
+if it is missing, creates `~/.config/omaridian/omarchy-screensaver.conf`. It
 refuses to replace an unrelated existing launcher or customized config. Remove
 it with:
 
@@ -24,26 +24,26 @@ existing `idle.screensaver` and `idle.lock` values. It also never edits
 ## Runtime contract
 
 The adapter preserves Omarchy's `force` and `screensaver-off` behavior, opens
-one direct Meridian process per Hyprland monitor, focuses each monitor before
-launch, and waits up to `MERIDIAN_SCREENSAVER_DEADLINE` seconds for an
+one direct Omaridian process per Hyprland monitor, focuses each monitor before
+launch, and waits up to `OMARIDIAN_SCREENSAVER_DEADLINE` seconds for an
 `org.omarchy.screensaver` open-window event. On an unavailable binary or a
-failed launch before any Meridian window maps it delegates to
+failed launch before any Omaridian window maps it delegates to
 `/usr/bin/omarchy-launch-screensaver`. After a partial launch it leaves the
-visible Meridian window in place so Omarchy does not mistake recovery for user
+visible Omaridian window in place so Omarchy does not mistake recovery for user
 dismissal and cancel the pending lock.
 
-Each direct process runs `meridian --screensaver` with both the Wayland app id
+Each direct process runs `omaridian --screensaver` with both the Wayland app id
 and the argv marker `org.omarchy.screensaver`. This is intentional: Hyprland
 idle sees the expected class/app-id, and Omarchy's existing lock command can
-reach direct Meridian processes with its package-owned `pkill -f` handoff.
+reach direct Omaridian processes with its package-owned `pkill -f` handoff.
 
-Meridian dismisses all same-identity screensaver processes on keyboard or
+Omaridian dismisses all same-identity screensaver processes on keyboard or
 pointer input. That closes every monitor's window, allowing Omarchy's idle
 service to classify the event as `screensaver-dismissed` and cancel the lock
 countdown. When `omarchy-system-lock` runs, its existing identity-based kill
-path terminates Meridian before the lock screen takes over.
+path terminates Omaridian before the lock screen takes over.
 
-Set `MERIDIAN_OMARCHY_ENABLED=0` in the config to use the stock launcher
+Set `OMARIDIAN_OMARCHY_ENABLED=0` in the config to use the stock launcher
 without uninstalling the adapter. `--wallpaper-layer` is unrelated and is not
 started by this integration.
 

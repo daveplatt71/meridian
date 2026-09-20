@@ -4,7 +4,7 @@ set -u
 # User-owned adapter for Omarchy's idle service. Keep the stock launcher as a
 # fallback: this file must not become a prerequisite for locking the session.
 
-config_path="${MERIDIAN_OMARCHY_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/meridian/omarchy-screensaver.conf}"
+config_path="${OMARIDIAN_OMARCHY_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/omaridian/omarchy-screensaver.conf}"
 if [[ -f "$config_path" ]]; then
   # This is deliberately a user-owned shell config, like other user command
   # adapters. It is never written by Omarchy or by this launcher.
@@ -12,16 +12,16 @@ if [[ -f "$config_path" ]]; then
   source "$config_path"
 fi
 
-meridian_enabled="${MERIDIAN_OMARCHY_ENABLED:-1}"
-meridian_bin="${MERIDIAN_BIN:-}"
-fallback="${MERIDIAN_FALLBACK:-/usr/bin/omarchy-launch-screensaver}"
-deadline="${MERIDIAN_SCREENSAVER_DEADLINE:-5}"
+omaridian_enabled="${OMARIDIAN_OMARCHY_ENABLED:-1}"
+omaridian_bin="${OMARIDIAN_BIN:-}"
+fallback="${OMARIDIAN_FALLBACK:-/usr/bin/omarchy-launch-screensaver}"
+deadline="${OMARIDIAN_SCREENSAVER_DEADLINE:-5}"
 
 fallback_to_stock() {
   if [[ -x "$fallback" && "$fallback" != "$0" ]]; then
     exec "$fallback" "$@"
   fi
-  printf '%s\n' "Meridian screensaver unavailable and stock fallback is missing: $fallback" >&2
+  printf '%s\n' "Omaridian screensaver unavailable and stock fallback is missing: $fallback" >&2
   exit 1
 }
 
@@ -32,14 +32,14 @@ abort_after_partial_launch() {
   exit 1
 }
 
-case "$meridian_enabled" in
+case "$omaridian_enabled" in
   0|false|no|off) fallback_to_stock "$@" ;;
 esac
 
-if [[ -z "$meridian_bin" ]]; then
-  meridian_bin="$(command -v meridian 2>/dev/null || true)"
+if [[ -z "$omaridian_bin" ]]; then
+  omaridian_bin="$(command -v omaridian 2>/dev/null || true)"
 fi
-if [[ ! -x "$meridian_bin" ]]; then
+if [[ ! -x "$omaridian_bin" ]]; then
   fallback_to_stock "$@"
 fi
 
@@ -58,13 +58,13 @@ fi
 
 # Omarchy's idle service and lock command use this identity. The explicit
 # --app-id also keeps the identity in argv so the stock pkill handoff reaches
-# direct Meridian processes, not just terminal wrappers.
+# direct Omaridian processes, not just terminal wrappers.
 if pgrep -f '[o]rg.omarchy.screensaver' >/dev/null 2>&1; then
   exit 0
 fi
 
 if [[ ! "$deadline" =~ ^[1-9][0-9]*$ ]]; then
-  printf '%s\n' "Invalid MERIDIAN_SCREENSAVER_DEADLINE: $deadline" >&2
+  printf '%s\n' "Invalid OMARIDIAN_SCREENSAVER_DEADLINE: $deadline" >&2
   fallback_to_stock "$@"
 fi
 
@@ -118,11 +118,11 @@ screensaver_closed=0
 lock_started=0
 for monitor in "${monitors[@]}"; do
   if ((launched)) && ! pgrep -f -- '--omarchy-adapter' >/dev/null 2>&1; then
-    abort_after_partial_launch 'Meridian screensaver was dismissed during launch'
+    abort_after_partial_launch 'Omaridian screensaver was dismissed during launch'
   fi
   if command -v omarchy-shell >/dev/null 2>&1 &&
      [[ $(omarchy-shell lock isLocked 2>/dev/null || true) == true ]]; then
-    if ((launched)); then abort_after_partial_launch 'Omarchy lock took over during Meridian launch'; fi
+    if ((launched)); then abort_after_partial_launch 'Omarchy lock took over during Omaridian launch'; fi
     exit 0
   fi
 
@@ -131,22 +131,22 @@ for monitor in "${monitors[@]}"; do
     fallback_to_stock "$@"
   }
 
-  hypr_exec "$meridian_bin" \
+  hypr_exec "$omaridian_bin" \
     --screensaver \
     --app-id=org.omarchy.screensaver \
     --omarchy-adapter \
     --monitor "$monitor" || {
-      if ((launched)); then abort_after_partial_launch "Could not launch Meridian on monitor $monitor"; fi
+      if ((launched)); then abort_after_partial_launch "Could not launch Omaridian on monitor $monitor"; fi
       fallback_to_stock "$@"
     }
 
   if ! wait_for_screensaver_window; then
     if ((screensaver_closed || lock_started)); then
-      if ((launched)); then abort_after_partial_launch 'Meridian screensaver closed or lock took over during launch'; fi
+      if ((launched)); then abort_after_partial_launch 'Omaridian screensaver closed or lock took over during launch'; fi
       exit 0
     fi
-    printf '%s\n' "Meridian did not map org.omarchy.screensaver on monitor $monitor" >&2
-    if ((launched)); then abort_after_partial_launch "Meridian did not map monitor $monitor"; fi
+    printf '%s\n' "Omaridian did not map org.omarchy.screensaver on monitor $monitor" >&2
+    if ((launched)); then abort_after_partial_launch "Omaridian did not map monitor $monitor"; fi
     fallback_to_stock "$@"
   fi
   launched=1

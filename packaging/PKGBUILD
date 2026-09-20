@@ -1,4 +1,4 @@
-pkgname=meridian
+pkgname=omaridian
 pkgver=0.1.0
 pkgrel=1
 pkgdesc='Offline vintage world-clock preview for Wayland'
@@ -16,7 +16,7 @@ build() {
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/usr \
         -DCMAKE_INSTALL_LIBEXECDIR=lib \
-        -DMERIDIAN_WITH_LAYER_SHELL=ON
+        -DOMARIDIAN_WITH_LAYER_SHELL=ON
     cmake --build "$srcdir/build"
 }
 
@@ -25,17 +25,17 @@ check() {
 }
 
 package() {
-    install -Dm755 "$srcdir/build/meridian" "$pkgdir/usr/bin/meridian"
+    install -Dm755 "$srcdir/build/omaridian" "$pkgdir/usr/bin/omaridian"
     install -Dm755 "$startdir/../integration/omarchy/omarchy-launch-screensaver" \
-        "$pkgdir/usr/share/meridian/omarchy/omarchy-launch-screensaver"
+        "$pkgdir/usr/share/omaridian/omarchy/omarchy-launch-screensaver"
     install -Dm755 "$startdir/../integration/omarchy/install.sh" \
-        "$pkgdir/usr/share/meridian/omarchy/install.sh"
+        "$pkgdir/usr/share/omaridian/omarchy/install.sh"
     install -Dm755 "$startdir/../integration/omarchy/uninstall.sh" \
-        "$pkgdir/usr/share/meridian/omarchy/uninstall.sh"
+        "$pkgdir/usr/share/omaridian/omarchy/uninstall.sh"
     install -Dm644 "$startdir/../integration/omarchy/omarchy-screensaver.conf.example" \
-        "$pkgdir/usr/share/meridian/omarchy/omarchy-screensaver.conf.example"
+        "$pkgdir/usr/share/omaridian/omarchy/omarchy-screensaver.conf.example"
     install -Dm644 "$startdir/../integration/omarchy/README.md" \
-        "$pkgdir/usr/share/meridian/omarchy/README.md"
+        "$pkgdir/usr/share/omaridian/omarchy/README.md"
     install -Dm644 "$startdir/../LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
     install -Dm644 "$startdir/../README.md" "$pkgdir/usr/share/doc/$pkgname/README.md"
     install -Dm644 "$startdir/../assets/README.md" "$pkgdir/usr/share/doc/$pkgname/assets-README.md"

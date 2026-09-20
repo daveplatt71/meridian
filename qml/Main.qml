@@ -4,8 +4,8 @@ import VintageAtlas 1.0
 
 Window {
     id: root
-    objectName: "meridianPreviewWindow"
-    title: "Meridian — World Clock"
+    objectName: "omaridianPreviewWindow"
+    title: "Omaridian — World Clock"
     visible: appWindowVisible
     width: 1600
     height: 700
@@ -15,7 +15,7 @@ Window {
     property bool wallpaperMode: appWallpaperMode
     property var clockContext: clockModel
     flags: wallpaperMode ? (Qt.FramelessWindowHint | Qt.WindowDoesNotAcceptFocus) : Qt.Window
-    MeridianScene {
+    OmaridianScene {
         id: scene
         anchors.fill: parent
         clockModel: root.clockContext

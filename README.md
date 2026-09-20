@@ -1,17 +1,17 @@
-# Meridian
+# Omaridian
 
 A native, offline vintage world-clock preview for Omarchy / Wayland, inspired
 by mechanical boardroom solar clocks. The standalone preview and opt-in
 Omarchy screensaver adapter are supported milestones.
 
-![Meridian ultrawide preview](docs/preview-ultrawide.png)
+![Omaridian ultrawide preview](docs/preview-ultrawide.png)
 
 ## Status
 
 This is an early public-preview candidate. The current release is a standalone
 clock that can be launched manually in preview, screensaver, or wallpaper
 renderer modes. The optional Omarchy screensaver integration uses a
-user-owned PATH adapter and direct per-monitor Meridian windows. True Wayland
+user-owned PATH adapter and direct per-monitor Omaridian windows. True Wayland
 background layering remains separate behind the optional `--wallpaper-layer`
 build; suspend/resume and hardware coverage remain follow-up work.
 
@@ -20,7 +20,7 @@ The companion static Omarchy theme is published at
 
 ## Design priority: speed and size
 
-The user's guiding requirement is that Meridian stay fast and small, in keeping
+The user's guiding requirement is that Omaridian stay fast and small, in keeping
 with Omarchy. Treat performance and footprint as acceptance criteria for new
 features, not a cleanup step at the end.
 
@@ -52,10 +52,10 @@ supported runtime baseline.
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j 4
 ctest --test-dir build --output-on-failure
-./build/meridian
-./build/meridian --fullscreen
-./build/meridian --screensaver
-./build/meridian --wallpaper
+./build/omaridian
+./build/omaridian --fullscreen
+./build/omaridian --screensaver
+./build/omaridian --wallpaper
 ```
 
 Escape closes the preview or screensaver. `--wallpaper` is currently a
@@ -79,7 +79,7 @@ includes an Arch package recipe under `packaging/` for local installation:
 ```sh
 cd packaging
 makepkg -si
-meridian --fullscreen
+omaridian --fullscreen
 ```
 
 The package installs the application, bundled resources, and opt-in adapter
@@ -92,9 +92,9 @@ For a clean source build, follow the CMake commands above. Package and CI
 builds use Release mode and run the full test suite before installation.
 
 ```sh
-./build/meridian --at 2026-06-21T08:24:00Z
+./build/omaridian --at 2026-06-21T08:24:00Z
 QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QT_QPA_PLATFORMTHEME=basic \
-  ./build/meridian --size 5120x1440 --at 2026-09-16T18:00:00Z --snapshot /tmp/meridian.png
+  ./build/omaridian --size 5120x1440 --at 2026-09-16T18:00:00Z --snapshot /tmp/omaridian.png
 ```
 
 `--at` requires an explicit timezone. Snapshots are static renders, not
@@ -126,7 +126,7 @@ changes with time.
 
 - The Omarchy adapter is opt-in; its installer activates the user-owned
   launcher path, while an uninstalled system keeps the stock launcher.
-- Meridian screensaver windows are fullscreen Qt windows, not layer-shell
+- Omaridian screensaver windows are fullscreen Qt windows, not layer-shell
   surfaces. `--wallpaper-layer` remains a separate wallpaper experiment.
 - It has not yet been validated across AMD, Intel, and NVIDIA hardware or
   across suspend/resume and monitor hotplug events.
@@ -137,7 +137,7 @@ Please report failures with the Omarchy version, CPU, GPU, display layout and
 the command that was run. Include terminal output and a screenshot when
 possible.
 
-Preview windows use `org.meridian.preview`. Only `--screensaver` uses
+Preview windows use `org.omaridian.preview`. Only `--screensaver` uses
 `org.omarchy.screensaver`, including the argv marker required by Omarchy's
 existing lock handoff. No desktop configuration or security policy is changed.
 
@@ -146,7 +146,7 @@ existing lock handoff. No desktop configuration or security policy is changed.
 The repository currently contains an optional, CI-tested Wayland layer-shell
 renderer. It is disabled by default. When enabled,
 `--wallpaper-layer` creates a real background surface with an empty input
-region and renders the Meridian map into it. It binds every initially
+region and renders the Omaridian map into it. It binds every initially
 advertised `wl_output`, creates one surface per output, handles runtime output
 add/remove, and redraws each output when the UTC minute changes. Integer output
 scales are applied to physical buffers while QML remains logical. An optional
@@ -166,13 +166,13 @@ To validate the optional developer feature locally, install
 ```sh
 cmake -S . -B build-layer-shell -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
-  -DMERIDIAN_WITH_LAYER_SHELL=ON
+  -DOMARIDIAN_WITH_LAYER_SHELL=ON
 cmake --build build-layer-shell
 ctest --test-dir build-layer-shell --output-on-failure
 ```
 
 To exercise the optional fractional-scale bindings as well, add
-`-DMERIDIAN_WITH_FRACTIONAL_SCALE=ON` to the configure command. That requires
+`-DOMARIDIAN_WITH_FRACTIONAL_SCALE=ON` to the configure command. That requires
 the installed staging `fractional-scale-v1` and stable `viewporter` protocol
 XML files.
 

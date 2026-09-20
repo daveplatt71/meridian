@@ -11,7 +11,7 @@
 #include <iostream>
 #include "atlas.h"
 #include "clock.h"
-#ifdef MERIDIAN_WITH_LAYER_SHELL
+#ifdef OMARIDIAN_WITH_LAYER_SHELL
 #include "layer_shell.h"
 #endif
 
@@ -23,7 +23,7 @@ public slots:
     void dismiss() {
         // The stock Omarchy lock/dismiss path identifies the screensaver by
         // this stable string. The launcher also keeps it in argv so pkill -f
-        // reaches direct Meridian processes, not only terminal wrappers.
+        // reaches direct Omaridian processes, not only terminal wrappers.
         QProcess::startDetached(QStringLiteral("pkill"), {
             QStringLiteral("-f"), QStringLiteral("[o]rg.omarchy.screensaver")});
         QCoreApplication::quit();
@@ -44,9 +44,9 @@ bool hasArgument(int argc, char **argv, const char *wanted) {
 int main(int argc,char **argv) {
     QGuiApplication app(argc,argv);
     const bool requestedSaver = hasArgument(argc, argv, "--screensaver");
-    app.setApplicationName(requestedSaver ? "org.omarchy.screensaver" : "Meridian");
-    app.setDesktopFileName(requestedSaver ? "org.omarchy.screensaver" : "org.meridian.preview");
-    QCommandLineParser parser;parser.setApplicationDescription("Meridian — an offline vintage solar atlas preview");parser.addHelpOption();
+    app.setApplicationName(requestedSaver ? "org.omarchy.screensaver" : "Omaridian");
+    app.setDesktopFileName(requestedSaver ? "org.omarchy.screensaver" : "org.omaridian.preview");
+    QCommandLineParser parser;parser.setApplicationDescription("Omaridian — an offline vintage solar atlas preview");parser.addHelpOption();
     parser.addOption({"fullscreen","Fill the current display (Escape to close)."});
     parser.addOption({"screensaver","Open the live atlas as a dismissible fullscreen screensaver."});
     parser.addOption({"wallpaper","Render the live atlas as a fullscreen wallpaper preview (not a desktop wallpaper)."});
@@ -81,11 +81,11 @@ int main(int argc,char **argv) {
             qCritical("--wallpaper-layer cannot be combined with --fullscreen, --screensaver, or --wallpaper");
             return 2;
         }
-#ifdef MERIDIAN_WITH_LAYER_SHELL
+#ifdef OMARIDIAN_WITH_LAYER_SHELL
         // The layer mode is entered after the shared clock and AtlasMap type
         // are initialized below.
 #else
-        qCritical("--wallpaper-layer is unavailable in this build; configure with -DMERIDIAN_WITH_LAYER_SHELL=ON");
+        qCritical("--wallpaper-layer is unavailable in this build; configure with -DOMARIDIAN_WITH_LAYER_SHELL=ON");
         return 2;
 #endif
     }
@@ -104,7 +104,7 @@ int main(int argc,char **argv) {
     } else {auto available=app.primaryScreen()->availableGeometry().size();size=QSize(std::min(1600,int(available.width()*.9)),std::min(800,int(available.height()*.85)));}
     qmlRegisterType<AtlasMap>("VintageAtlas",1,0,"AtlasMap");
     Clock clock(fixed);
-#ifdef MERIDIAN_WITH_LAYER_SHELL
+#ifdef OMARIDIAN_WITH_LAYER_SHELL
     if(layerMode)return runLayerShellProof(app,clock);
 #endif
     QQmlApplicationEngine engine;
@@ -135,7 +135,7 @@ int main(int argc,char **argv) {
     }
     window->resize(size);
     if (parser.isSet("screensaver")) {
-        auto *scene = window->findChild<QObject *>(QStringLiteral("meridianScene"));
+        auto *scene = window->findChild<QObject *>(QStringLiteral("omaridianScene"));
         static ScreensaverDismissal dismissal;
         if (scene) QObject::connect(scene, SIGNAL(closeRequested()), &dismissal, SLOT(dismiss()), Qt::UniqueConnection);
     }

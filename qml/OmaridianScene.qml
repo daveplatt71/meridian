@@ -3,7 +3,7 @@ import VintageAtlas 1.0
 
 Item {
     id: root
-    objectName: "meridianScene"
+    objectName: "omaridianScene"
 
     // These properties are supplied by the visible Window wrapper today and
     // can be supplied by a future QQuickRenderControl host.
@@ -61,7 +61,7 @@ Item {
                     anchors.left: parent.left
                     anchors.leftMargin: 12
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "MERIDIAN"
+                    text: "OMARIDIAN"
                     color: root.ivory
                     font.family: "Noto Serif"
                     font.pixelSize: Math.max(13, root.headingHeight * 0.46)

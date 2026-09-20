@@ -4,15 +4,16 @@ set -euo pipefail
 source_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 launcher_source="$source_dir/omarchy-launch-screensaver"
 config_source="$source_dir/omarchy-screensaver.conf.example"
-local_bin="${MERIDIAN_LOCAL_BIN_DIR:-$HOME/.local/bin}"
-config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/meridian"
+local_bin="${OMARIDIAN_LOCAL_BIN_DIR:-$HOME/.local/bin}"
+config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/omaridian"
 launcher_target="$local_bin/omarchy-launch-screensaver"
 config_target="$config_dir/omarchy-screensaver.conf"
-shell_rc="${MERIDIAN_SHELL_RC:-$HOME/.bashrc}"
-path_marker='# meridian-omarchy-integration: prepend user launcher path'
+shell_rc="${OMARIDIAN_SHELL_RC:-$HOME/.bashrc}"
+path_begin='# omaridian-omarchy-integration: begin'
+path_end='# omaridian-omarchy-integration: end'
 
 if [[ ! -f "$launcher_source" || ! -f "$config_source" ]]; then
-  printf '%s\n' "Meridian Omarchy integration files are incomplete in $source_dir" >&2
+  printf '%s\n' "Omaridian Omarchy integration files are incomplete in $source_dir" >&2
   exit 1
 fi
 
@@ -45,34 +46,36 @@ if [[ -e "$shell_rc" && ! -f "$shell_rc" ]]; then
   printf '%s\n' "Refusing to replace non-file: $shell_rc" >&2
   exit 1
 fi
-if ! grep -Fqx "$path_marker" "$shell_rc" 2>/dev/null; then
+if ! grep -Fqx "$path_begin" "$shell_rc" 2>/dev/null; then
   install -d -m 755 "$(dirname "$shell_rc")"
-  tmp_rc="${shell_rc}.meridian.$$"
+  tmp_rc="${shell_rc}.omaridian.$$"
   if [[ -f "$shell_rc" ]]; then
-    awk -v marker="$path_marker" '
+    awk -v begin="$path_begin" -v end="$path_end" '
       !inserted && $0 ~ /^\[\[ \$- != \*i\* \]\] && return/ {
-        print marker
+        print begin
         print "case \":$PATH:\" in *:\"$HOME/.local/bin:\"*) ;; *) PATH=\"$HOME/.local/bin:$PATH\" ;; esac"
         print "export PATH"
+        print end
         inserted=1
       }
       { print }
       END {
         if (!inserted) {
-          print marker
+          print begin
           print "case \":$PATH:\" in *:\"$HOME/.local/bin:\"*) ;; *) PATH=\"$HOME/.local/bin:$PATH\" ;; esac"
           print "export PATH"
+          print end
         }
       }
     ' "$shell_rc" > "$tmp_rc"
   else
-    printf '%s\n' "$path_marker" 'export PATH="$HOME/.local/bin:$PATH"' > "$tmp_rc"
+    printf '%s\n' "$path_begin" 'export PATH="$HOME/.local/bin:$PATH"' "$path_end" > "$tmp_rc"
   fi
   chmod --reference="$shell_rc" "$tmp_rc" 2>/dev/null || chmod 644 "$tmp_rc"
   mv -f "$tmp_rc" "$shell_rc"
 fi
 
-printf '%s\n' "Installed Meridian's user-owned Omarchy launcher: $launcher_target"
+printf '%s\n' "Installed Omaridian's user-owned Omarchy launcher: $launcher_target"
 printf '%s\n' "Configuration: $config_target"
-printf '%s\n' "PATH activation added to $shell_rc; new Omarchy idle launches will use Meridian."
-printf '%s\n' "Set MERIDIAN_OMARCHY_ENABLED=0 in the config to return to the stock launcher."
+printf '%s\n' "PATH activation added to $shell_rc; new Omarchy idle launches will use Omaridian."
+printf '%s\n' "Set OMARIDIAN_OMARCHY_ENABLED=0 in the config to return to the stock launcher."

@@ -81,7 +81,7 @@ exclusive zone, keyboard mode `NONE`, support detection, and surface-close
 handling. It is a good reference for the protocol state machine and could be
 used for a small experimental host.
 
-It is not the preferred production host for Meridian. Embedding the existing
+It is not the preferred production host for Omaridian. Embedding the existing
 QML scene in GTK would require either a renderer rewrite or a
 `QQuickRenderControl` scene rendered into a GTK/GDK texture. That introduces
 two UI toolkits, another frame/synchronization boundary, and likely a CPU or
@@ -154,14 +154,14 @@ configure size follows the same replacement path. Fractional scale changes remai
 future work. Integer output scale is read before the first layer commit;
 buffers use physical dimensions while the QML scene remains in logical
 coordinates, and a later integer scale change recreates only that output. An
-optional `MERIDIAN_WITH_FRACTIONAL_SCALE` build adds the staging
+optional `OMARIDIAN_WITH_FRACTIONAL_SCALE` build adds the staging
 `fractional-scale-v1` and stable `wp_viewporter` protocols, using the
 compositor's preferred scale when both globals are advertised and retaining
 the integer fallback otherwise.
 
 The remaining items below are the acceptance requirements for production use.
 
-Add a build option such as `MERIDIAN_WITH_LAYER_SHELL`, disabled when the
+Add a build option such as `OMARIDIAN_WITH_LAYER_SHELL`, disabled when the
 optional protocol/toolchain pieces are unavailable. Pin and license the
 wlr-layer-shell protocol XML, generate client bindings with `wayland-scanner`,
 and use only public Wayland and Qt APIs.
@@ -177,7 +177,7 @@ for this software target. Request:
 - keyboard interactivity `NONE`;
 - an explicitly empty `wl_region`, so the surface does not intercept pointer
   input;
-- a stable namespace such as `meridian-wallpaper`.
+- a stable namespace such as `omaridian-wallpaper`.
 
 The initial layer-surface commit must attach no buffer. Set size to `0,0`,
 anchor all four edges, commit once, then wait for configure, acknowledge the
@@ -237,7 +237,7 @@ Failure must be safe and boring:
    Bound recovery attempts prevent repeated compositor closes from creating a
    destroy/recreate loop.
 3. If one output fails, keep healthy outputs running only if the controller can
-   prove that cleanup is independent; otherwise stop all Meridian surfaces and
+   prove that cleanup is independent; otherwise stop all Omaridian surfaces and
    leave the existing static wallpaper intact.
 4. Never claim success until the first configured frame has been submitted.
    A separate launcher can then choose the static theme wallpaper as fallback.

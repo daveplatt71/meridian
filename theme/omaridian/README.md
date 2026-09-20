@@ -1,6 +1,6 @@
-# Meridian Omarchy theme
+# Omaridian Omarchy theme
 
-This is the static theme package for Meridian’s next roadmap milestone. It
+This is the static theme package for Omaridian’s next roadmap milestone. It
 uses Omarchy’s `colors.toml` palette interface and the installed `Yaru-wartybrown`
 icon variant: dark deep-ocean surfaces, walnut-brown shadows, aged brass
 accents, and parchment text.
@@ -13,7 +13,7 @@ milestone.
 
 ## Wallpaper boundary
 
-The theme is intentionally data-only at this stage. A static Meridian render
+The theme is intentionally data-only at this stage. A static Omaridian render
 is the fallback wallpaper concept: it can be exported from the standalone
 preview and selected like any other background, with no process, timer, or
 Omarchy hook running behind it. The repository’s preview image is a visual
@@ -26,5 +26,5 @@ theme package should attempt to launch them. This milestone does not modify
 `~/.config`, `/usr/share/omarchy`, idle policy, lock behavior, or shell startup.
 
 `shell.toml` is intentionally absent: the installed local themes use
-`shell.lock.toml` for the optional shell override, and Meridian does not need
+`shell.lock.toml` for the optional shell override, and Omaridian does not need
 to lock shell colors yet.

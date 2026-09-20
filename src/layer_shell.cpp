@@ -15,7 +15,7 @@
 #include <wayland-client-core.h>
 #include <wayland-client-protocol.h>
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
-#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+#ifdef OMARIDIAN_WITH_FRACTIONAL_SCALE
 #include "fractional-scale-v1-client-protocol.h"
 #include "viewporter-client-protocol.h"
 #endif
@@ -49,14 +49,14 @@ struct WaylandState {
     wl_compositor *compositor = nullptr;
     wl_shm *shm = nullptr;
     zwlr_layer_shell_v1 *layerShell = nullptr;
-#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+#ifdef OMARIDIAN_WITH_FRACTIONAL_SCALE
     wp_fractional_scale_manager_v1 *fractionalScaleManager = nullptr;
     wp_viewporter *viewporter = nullptr;
 #endif
     bool failed = false;
 
     bool fail(const char *message) {
-        std::fprintf(stderr, "Meridian layer-shell proof: %s\n", message);
+        std::fprintf(stderr, "Omaridian layer-shell proof: %s\n", message);
         std::fflush(stderr);
         failed = true;
         app.exit(1);
@@ -73,7 +73,7 @@ struct WaylandState {
 // value prevents each successor's initial scale event from retiring it again.
 struct OutputScale {
     int32_t integer = 1;
-#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+#ifdef OMARIDIAN_WITH_FRACTIONAL_SCALE
     uint32_t preferred = 0; // 120ths; zero means no preference received yet.
 #endif
 };
@@ -93,7 +93,7 @@ public:
         surface_ = wl_compositor_create_surface(wayland_.compositor);
         if (!surface_) return fail("could not create Wayland surface");
         layerSurface_ = zwlr_layer_shell_v1_get_layer_surface(
-            wayland_.layerShell, surface_, output_, ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND, "meridian-wallpaper-proof");
+            wayland_.layerShell, surface_, output_, ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND, "omaridian-wallpaper-proof");
         if (!layerSurface_) return fail("could not create layer-shell surface");
 
         static const zwlr_layer_surface_v1_listener layerListener = {
@@ -115,7 +115,7 @@ public:
             ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT);
         zwlr_layer_surface_v1_set_exclusive_zone(layerSurface_, -1);
         zwlr_layer_surface_v1_set_keyboard_interactivity(layerSurface_, ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE);
-#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+#ifdef OMARIDIAN_WITH_FRACTIONAL_SCALE
         // Both extensions are needed. Missing either retains integer scaling.
         if (wayland_.fractionalScaleManager && wayland_.viewporter) {
             fractionalScale_ = wp_fractional_scale_manager_v1_get_fractional_scale(wayland_.fractionalScaleManager, surface_);
@@ -150,7 +150,7 @@ public:
     bool closed() const { return closed_; }
     void retire() { retired_ = true; pendingRender_ = false; }
     bool hasPreferredScale() const {
-#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+#ifdef OMARIDIAN_WITH_FRACTIONAL_SCALE
         return fractionalScale_ && outputScale_.preferred != 0;
 #else
         return false;
@@ -158,7 +158,7 @@ public:
     }
 
     int32_t surfaceBufferScale() const {
-#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+#ifdef OMARIDIAN_WITH_FRACTIONAL_SCALE
         if (fractionalScale_ && viewport_) return 1;
 #endif
         return scale_;
@@ -187,7 +187,7 @@ private:
         return wayland_.fail(message);
     }
 
-#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+#ifdef OMARIDIAN_WITH_FRACTIONAL_SCALE
     static int32_t bufferScale(uint32_t preferred) {
         // ceil(preferred / 120), without overflowing a uint32_t at UINT32_MAX.
         return static_cast<int32_t>(preferred / 120 + (preferred % 120 != 0));
@@ -233,10 +233,10 @@ private:
             return;
         }
         if (!renderScene(slots_[0])) {
-            fail("could not render MeridianScene into wl_shm buffer");
+            fail("could not render OmaridianScene into wl_shm buffer");
             return;
         }
-#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+#ifdef OMARIDIAN_WITH_FRACTIONAL_SCALE
         if (viewport_) {
             // Viewport source coordinates are buffer pixels, while the
             // destination is surface-logical pixels. Select the whole
@@ -278,7 +278,7 @@ private:
         for (BufferSlot &slot : slots_) {
             slot.owner = this;
             slot.bytes = static_cast<size_t>(bytes);
-            char name[] = "/meridian-layer-XXXXXX";
+            char name[] = "/omaridian-layer-XXXXXX";
             slot.fd = memfd_create(name, MFD_CLOEXEC);
             if (slot.fd < 0 || ftruncate(slot.fd, static_cast<off_t>(bytes)) < 0) return false;
             slot.pixels = static_cast<uint32_t *>(mmap(nullptr, bytes, PROT_READ | PROT_WRITE, MAP_SHARED, slot.fd, 0));
@@ -312,7 +312,7 @@ private:
         if (nextSlot == kBufferCount) return;
 
         if (!renderScene(slots_[nextSlot])) {
-            fail("could not redraw MeridianScene");
+            fail("could not redraw OmaridianScene");
             return;
         }
         pendingRender_ = false;
@@ -339,7 +339,7 @@ private:
             engine_.rootContext()->setContextProperty("appCaptureMode", false);
             engine_.rootContext()->setContextProperty("appSaverMode", false);
             engine_.rootContext()->setContextProperty("appWallpaperMode", true);
-            engine_.load(QUrl("qrc:/qml/MeridianScene.qml"));
+            engine_.load(QUrl("qrc:/qml/OmaridianScene.qml"));
             if (engine_.rootObjects().isEmpty()) return false;
             scene_ = qobject_cast<QQuickItem *>(engine_.rootObjects().first());
             if (!scene_) return false;
@@ -358,7 +358,7 @@ private:
     void cleanup() {
         renderControl_.invalidate();
         renderWindow_.setRenderTarget(QQuickRenderTarget());
-#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+#ifdef OMARIDIAN_WITH_FRACTIONAL_SCALE
         if (viewport_) wp_viewport_destroy(viewport_);
         if (fractionalScale_) wp_fractional_scale_v1_destroy(fractionalScale_);
 #endif
@@ -384,7 +384,7 @@ private:
     QQuickItem *scene_ = nullptr;
     wl_surface *surface_ = nullptr;
     zwlr_layer_surface_v1 *layerSurface_ = nullptr;
-#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+#ifdef OMARIDIAN_WITH_FRACTIONAL_SCALE
     wp_fractional_scale_v1 *fractionalScale_ = nullptr;
     wp_viewport *viewport_ = nullptr;
 #endif
@@ -407,7 +407,7 @@ public:
         notifier_.reset();
         for (auto &output : outputs_) output->surface.reset();
         outputs_.clear();
-#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+#ifdef OMARIDIAN_WITH_FRACTIONAL_SCALE
         if (wayland_.fractionalScaleManager) wp_fractional_scale_manager_v1_destroy(wayland_.fractionalScaleManager);
         if (wayland_.viewporter) wp_viewporter_destroy(wayland_.viewporter);
 #endif
@@ -438,7 +438,7 @@ public:
                     self->pendingOutputs_.push_back({name, qMin(version, 4u)});
                 else if (std::strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0 && version >= 4)
                     wayland.layerShell = static_cast<zwlr_layer_shell_v1 *>(wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, 4));
-#ifdef MERIDIAN_WITH_FRACTIONAL_SCALE
+#ifdef OMARIDIAN_WITH_FRACTIONAL_SCALE
                 else if (std::strcmp(interface, wp_fractional_scale_manager_v1_interface.name) == 0 && !wayland.fractionalScaleManager)
                     wayland.fractionalScaleManager = static_cast<wp_fractional_scale_manager_v1 *>(wl_registry_bind(registry, name, &wp_fractional_scale_manager_v1_interface, 1));
                 else if (std::strcmp(interface, wp_viewporter_interface.name) == 0 && !wayland.viewporter)

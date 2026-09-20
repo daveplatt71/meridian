@@ -1,6 +1,6 @@
-# Contributing to Meridian
+# Contributing to Omaridian
 
-Meridian is an early standalone preview for an Omarchy screensaver. Small,
+Omaridian is an early standalone preview for an Omarchy screensaver. Small,
 focused changes are easiest to review.
 
 Before submitting a change:
