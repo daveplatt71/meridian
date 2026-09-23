@@ -1,0 +1,18 @@
+pkgbase = omaridian
+	pkgdesc = Offline vintage world-clock screensaver for Omarchy and Wayland
+	pkgver = 0.1.0
+	pkgrel = 3
+	url = https://github.com/daveplatt71/meridian
+	arch = x86_64
+	license = MIT
+	makedepends = cmake
+	makedepends = ninja
+	depends = qt6-base>=6.11
+	depends = qt6-declarative>=6.11
+	depends = qt6-wayland>=6.11
+	depends = wayland
+	depends = noto-fonts
+	source = omaridian-0.1.0.tar.gz::https://github.com/daveplatt71/meridian/archive/refs/tags/v0.1.0.tar.gz
+	sha256sums = 5749c1e9e4444fc556bfbd33f9653b8af1bd0ecde816c320b86803b979954706
+
+pkgname = omaridian
