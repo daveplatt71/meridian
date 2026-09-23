@@ -35,7 +35,7 @@ jobs:
 
       - name: Install package and run smoke test
         run: |
-          pacman -U --noconfirm packaging/omaridian-0.1.0-2-x86_64.pkg.tar.zst
+          pacman -U --noconfirm packaging/omaridian-0.1.1-1-x86_64.pkg.tar.zst
           QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME=basic \
             QT_QUICK_BACKEND=software \
             /usr/bin/omaridian --size 640x360 \
@@ -44,7 +44,7 @@ jobs:
 
       - name: Validate package metadata and contents
         run: |
-          package_file=packaging/omaridian-0.1.0-2-x86_64.pkg.tar.zst
+          package_file=packaging/omaridian-0.1.1-1-x86_64.pkg.tar.zst
           test -f "$package_file"
           pacman -Qp "$package_file"
           tar -tf "$package_file" | grep -Fx 'usr/bin/omaridian'

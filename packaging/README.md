@@ -2,26 +2,23 @@
 
 ## Install the x86_64 prerelease
 
-The [v0.1.0 prerelease](https://github.com/daveplatt71/meridian/releases/tag/v0.1.0)
-provides `omaridian-0.1.0-2-x86_64.pkg.tar.zst` and `SHA256SUMS`.
-
-Download the package and checksum manifest directly:
-
-```sh
-asset=omaridian-0.1.0-2-x86_64.pkg.tar.zst
-base=https://github.com/daveplatt71/meridian/releases/download/v0.1.0
-curl -fL -O "$base/$asset"
-curl -fL -o SHA256SUMS "$base/SHA256SUMS"
-sha256sum --check SHA256SUMS && sudo pacman -U "$asset"
-```
-
-Alternatively, use GitHub CLI to fetch both release files:
+The [v0.1.1 prerelease](https://github.com/daveplatt71/meridian/releases/tag/v0.1.1)
+provides `omaridian-0.1.1-1-x86_64.pkg.tar.zst`. Use a recent GitHub CLI to
+verify the immutable release and the downloaded asset:
 
 ```sh
-gh release download v0.1.0 -R daveplatt71/meridian \
-  -p 'omaridian-0.1.0-2-x86_64.pkg.tar.zst' -p SHA256SUMS
-sha256sum --check SHA256SUMS && sudo pacman -U omaridian-0.1.0-2-x86_64.pkg.tar.zst
+gh release verify v0.1.1 -R daveplatt71/meridian
+gh release download v0.1.1 -R daveplatt71/meridian \
+  -p 'omaridian-0.1.1-1-x86_64.pkg.tar.zst'
+gh release verify-asset v0.1.1 ./omaridian-0.1.1-1-x86_64.pkg.tar.zst \
+  -R daveplatt71/meridian &&
+  sudo pacman -U ./omaridian-0.1.1-1-x86_64.pkg.tar.zst
 ```
+
+The release's `SHA256SUMS` detects transfer errors but does not independently
+authenticate an asset from the same release. Installing a remote URL directly
+with `pacman -U` requires a trusted package signature and is not supported by
+this release. Keep pacman's signature settings intact.
 
 Use a fully updated x86_64 Arch or Omarchy system with Qt 6.11 or newer
 (`qt6-base`, `qt6-declarative`, and `qt6-wayland`), Wayland, and Noto fonts.

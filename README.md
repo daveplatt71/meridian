@@ -68,26 +68,24 @@ The screensaver adapter and its installer are documented in
 ## Arch and Omarchy installation
 
 The x86_64 Arch package is available as a
-[GitHub prerelease](https://github.com/daveplatt71/meridian/releases/tag/v0.1.0).
-Its filename is `omaridian-0.1.0-2-x86_64.pkg.tar.zst`.
-
-Download directly with `curl`:
-
-```sh
-asset=omaridian-0.1.0-2-x86_64.pkg.tar.zst
-base=https://github.com/daveplatt71/meridian/releases/download/v0.1.0
-curl -fL -O "$base/$asset"
-curl -fL -o SHA256SUMS "$base/SHA256SUMS"
-sha256sum --check SHA256SUMS && sudo pacman -U "$asset"
-```
-
-Or download both files with the GitHub CLI, then verify and install:
+[GitHub prerelease](https://github.com/daveplatt71/meridian/releases/tag/v0.1.1).
+Verify the immutable release and downloaded package with GitHub CLI before
+installing the local file:
 
 ```sh
-gh release download v0.1.0 -R daveplatt71/meridian \
-  -p 'omaridian-0.1.0-2-x86_64.pkg.tar.zst' -p SHA256SUMS
-sha256sum --check SHA256SUMS && sudo pacman -U omaridian-0.1.0-2-x86_64.pkg.tar.zst
+gh release verify v0.1.1 -R daveplatt71/meridian
+gh release download v0.1.1 -R daveplatt71/meridian \
+  -p 'omaridian-0.1.1-1-x86_64.pkg.tar.zst'
+gh release verify-asset v0.1.1 ./omaridian-0.1.1-1-x86_64.pkg.tar.zst \
+  -R daveplatt71/meridian &&
+  sudo pacman -U ./omaridian-0.1.1-1-x86_64.pkg.tar.zst
 ```
+
+Use a recent GitHub CLI with `release verify` and `release verify-asset`.
+The release also provides `SHA256SUMS`, but a checksum downloaded from the
+same release is only an integrity check, not independent authentication.
+Pacman requires a trusted signature for remote `-U` URLs, so use the verified
+local file. Do not weaken pacman's signature policy to install Omaridian.
 
 The package requires a fully updated Arch/Omarchy system with Qt 6.11 or
 newer (`qt6-base`, `qt6-declarative`, and `qt6-wayland`), plus Wayland and

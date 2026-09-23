@@ -1,6 +1,6 @@
 pkgname=omaridian
-pkgver=0.1.0
-pkgrel=2
+pkgver=0.1.1
+pkgrel=1
 pkgdesc='Offline vintage world-clock screensaver for Omarchy and Wayland'
 arch=('x86_64')
 url='https://github.com/daveplatt71/meridian'
