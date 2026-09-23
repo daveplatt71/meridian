@@ -1,7 +1,7 @@
 # Maintainer: Dave Platt <https://github.com/daveplatt71>
 pkgname=omaridian
-pkgver=0.1.0
-pkgrel=3
+pkgver=0.1.1
+pkgrel=2
 pkgdesc='Offline vintage world-clock screensaver for Omarchy and Wayland'
 arch=('x86_64')
 url='https://github.com/daveplatt71/meridian'
@@ -9,7 +9,7 @@ license=('MIT')
 depends=('qt6-base>=6.11' 'qt6-declarative>=6.11' 'qt6-wayland>=6.11' 'wayland' 'noto-fonts')
 makedepends=('cmake' 'ninja')
 source=("omaridian-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz")
-sha256sums=('5749c1e9e4444fc556bfbd33f9653b8af1bd0ecde816c320b86803b979954706')
+sha256sums=('f14d47e7d8b52d1a74bc3958a7d34d00c6543dd8d3785e07332b16e92136b863')
 
 build() {
     cmake -S "$srcdir/meridian-$pkgver" -B "$srcdir/build" -G Ninja \

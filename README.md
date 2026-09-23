@@ -86,6 +86,9 @@ The release also provides `SHA256SUMS`, but a checksum downloaded from the
 same release is only an integrity check, not independent authentication.
 Pacman requires a trusted signature for remote `-U` URLs, so use the verified
 local file. Do not weaken pacman's signature policy to install Omaridian.
+The [packaging guide](packaging/README.md) also provides a pinned-hash path
+when GitHub CLI verification is unavailable. The AUR source recipe is ready
+for submission but is not published yet.
 
 The package requires a fully updated Arch/Omarchy system with Qt 6.11 or
 newer (`qt6-base`, `qt6-declarative`, and `qt6-wayland`), plus Wayland and

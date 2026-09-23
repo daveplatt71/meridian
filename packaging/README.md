@@ -20,6 +20,21 @@ authenticate an asset from the same release. Installing a remote URL directly
 with `pacman -U` requires a trusted package signature and is not supported by
 this release. Keep pacman's signature settings intact.
 
+If GitHub CLI release verification is unavailable, compare the downloaded
+package against this pinned v0.1.1 digest before installing. The digest was
+checked against the immutable release attestation:
+
+```sh
+curl -fLO https://github.com/daveplatt71/meridian/releases/download/v0.1.1/omaridian-0.1.1-1-x86_64.pkg.tar.zst
+printf '%s  %s\n' \
+  '3f1c57aea5badf46d1323d22fb375f553061837df2175b0bd7eb411c7e21ca9b' \
+  'omaridian-0.1.1-1-x86_64.pkg.tar.zst' | sha256sum --check - &&
+  sudo pacman -U ./omaridian-0.1.1-1-x86_64.pkg.tar.zst
+```
+
+The AUR source recipe in [`aur/`](aur/) is ready for submission. It is not
+published to the AUR yet, so `omarchy pkg aur add omaridian` is not available.
+
 Use a fully updated x86_64 Arch or Omarchy system with Qt 6.11 or newer
 (`qt6-base`, `qt6-declarative`, and `qt6-wayland`), Wayland, and Noto fonts.
 Test the installed preview with `omaridian --fullscreen`; test fullscreen

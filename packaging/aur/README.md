@@ -16,8 +16,8 @@ builds the application, and runs its tests. Before submitting a new version,
 update `pkgver`, the archive checksum, and `.SRCINFO`; build from a clean
 directory with `makepkg -s`.
 
-The first AUR package uses release number `3` so it upgrades the downloadable
-`omaridian-0.1.0-2` preview package cleanly.
+The AUR package uses release number `2` so it upgrades the downloadable
+`omaridian-0.1.1-1` preview package cleanly.
 
 The existing `packaging/PKGBUILD` builds directly from a local checkout and is
 used for the downloadable binary release. This recipe is self-contained so
