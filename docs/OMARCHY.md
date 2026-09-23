@@ -16,8 +16,6 @@ stock files.
 - Refuse to overwrite unrelated launchers or customized configuration.
 - Make uninstall conservative: remove only files and managed lines created by
   Omaridian, never recursively delete user data.
-- Keep the static theme data-only. It must not start a process, download data,
-  or alter the lock screen.
 
 The adapter is intentionally a screensaver integration rather than a
 Quickshell bar plugin. Omarchy's plugin directory is for shell plugins and

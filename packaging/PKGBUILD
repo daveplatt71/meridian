@@ -1,11 +1,12 @@
 pkgname=omaridian
 pkgver=0.1.0
-pkgrel=1
-pkgdesc='Offline vintage world-clock preview for Wayland'
+pkgrel=2
+pkgdesc='Offline vintage world-clock screensaver for Omarchy and Wayland'
 arch=('x86_64')
+url='https://github.com/daveplatt71/meridian'
 license=('MIT')
 depends=('qt6-base>=6.11' 'qt6-declarative>=6.11' 'qt6-wayland>=6.11' 'wayland' 'noto-fonts')
-makedepends=('cmake' 'ninja' 'wayland-protocols')
+makedepends=('cmake' 'ninja')
 source=()
 sha256sums=()
 
@@ -16,7 +17,7 @@ build() {
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/usr \
         -DCMAKE_INSTALL_LIBEXECDIR=lib \
-        -DOMARIDIAN_WITH_LAYER_SHELL=ON
+        -DOMARIDIAN_WITH_LAYER_SHELL=OFF
     cmake --build "$srcdir/build"
 }
 

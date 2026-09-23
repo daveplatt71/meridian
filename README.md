@@ -1,22 +1,19 @@
 # Omaridian
 
-A native, offline vintage world-clock preview for Omarchy / Wayland, inspired
-by mechanical boardroom solar clocks. The standalone preview and opt-in
-Omarchy screensaver adapter are supported milestones.
+A native, offline vintage world clock for Omarchy / Wayland, inspired by
+mechanical boardroom solar clocks. Supported use is an opt-in Omarchy
+screensaver and a preview launched manually.
 
 ![Omaridian ultrawide preview](docs/preview-ultrawide.png)
 
 ## Status
 
-This is an early public-preview candidate. The current release is a standalone
-clock that can be launched manually in preview, screensaver, or wallpaper
-renderer modes. The optional Omarchy screensaver integration uses a
-user-owned PATH adapter and direct per-monitor Omaridian windows. True Wayland
-background layering remains separate behind the optional `--wallpaper-layer`
-build; suspend/resume and hardware coverage remain follow-up work.
-
-The companion static Omarchy theme is published at
-[daveplatt71/meridian-theme](https://github.com/daveplatt71/meridian-theme).
+This is an early public-preview candidate. Omaridian can be launched manually
+as a windowed preview or fullscreen screensaver. Its optional Omarchy
+integration uses a user-owned PATH adapter and direct per-monitor fullscreen
+windows. Installing the adapter is explicit; without it, Omarchy keeps its
+stock screensaver launcher. Real-hardware, suspend/resume, and monitor-change
+validation remain outstanding.
 
 ## Design priority: speed and size
 
@@ -55,12 +52,9 @@ ctest --test-dir build --output-on-failure
 ./build/omaridian
 ./build/omaridian --fullscreen
 ./build/omaridian --screensaver
-./build/omaridian --wallpaper
 ```
 
-Escape closes the preview or screensaver. `--wallpaper` is currently a
-non-focus fullscreen renderer preview; it does not yet install a background
-layer or alter Omarchy's desktop configuration. The fullscreen view uses the display's current
+Escape closes the preview or screensaver. The fullscreen view uses the display's current
 logical dimensions; Qt handles the display scale. A thin walnut/brass picture
 frame replaces the former side panels. Ultrawide displays use a Lambert
 cylindrical equal-area map with mild horizontal expansion; standard displays
@@ -73,20 +67,53 @@ The screensaver adapter and its installer are documented in
 
 ## Arch and Omarchy installation
 
-The supported development path is a native Arch or Omarchy build. The project
-includes an Arch package recipe under `packaging/` for local installation:
+The x86_64 Arch package is available as a
+[GitHub prerelease](https://github.com/daveplatt71/meridian/releases/tag/v0.1.0).
+Its filename is `omaridian-0.1.0-2-x86_64.pkg.tar.zst`.
+
+Download directly with `curl`:
 
 ```sh
-cd packaging
-makepkg -si
-omaridian --fullscreen
+asset=omaridian-0.1.0-2-x86_64.pkg.tar.zst
+base=https://github.com/daveplatt71/meridian/releases/download/v0.1.0
+curl -fL -O "$base/$asset"
+curl -fL -o SHA256SUMS "$base/SHA256SUMS"
+sha256sum --check SHA256SUMS && sudo pacman -U "$asset"
 ```
 
-The package installs the application, bundled resources, and opt-in adapter
-templates. It does not edit Omarchy configuration, change idle or lock
-timings, install a system service, or replace the stock screensaver. Run the
-user-owned adapter installer explicitly, and remove the package with normal
-Arch package tools.
+Or download both files with the GitHub CLI, then verify and install:
+
+```sh
+gh release download v0.1.0 -R daveplatt71/meridian \
+  -p 'omaridian-0.1.0-2-x86_64.pkg.tar.zst' -p SHA256SUMS
+sha256sum --check SHA256SUMS && sudo pacman -U omaridian-0.1.0-2-x86_64.pkg.tar.zst
+```
+
+The package requires a fully updated Arch/Omarchy system with Qt 6.11 or
+newer (`qt6-base`, `qt6-declarative`, and `qt6-wayland`), plus Wayland and
+Noto fonts. Preview the installed app with `omaridian --fullscreen`; use
+`omaridian --screensaver` to test its fullscreen screensaver mode (press Escape
+to close either one).
+
+The adapter is opt-in. To connect it to Omarchy's idle screensaver, run:
+
+```sh
+/usr/share/omaridian/omarchy/install.sh
+```
+
+This enables the user-owned launcher in `~/.local/bin`; it does not change
+Omarchy's idle or lock timings. To uninstall the package, first run
+`/usr/share/omaridian/omarchy/uninstall.sh`, then remove the package:
+
+```sh
+sudo pacman -R omaridian
+```
+
+Before upgrading with another `pacman -U`, run the installed
+`/usr/share/omaridian/omarchy/uninstall.sh`. After the upgrade, run the new
+`/usr/share/omaridian/omarchy/install.sh` to refresh the copied launcher if you
+want to keep the Omarchy integration enabled. Package removal alone does not
+remove user-owned files from your home directory.
 
 For a clean source build, follow the CMake commands above. Package and CI
 builds use Release mode and run the full test suite before installation.
@@ -114,20 +141,22 @@ The display includes compact, preprocessed country polygons and a 2048×1024
 Natural Earth shaded-relief layer. Both are static; only the solar/night layer
 changes with time.
 
-## Remaining milestones
+## Remaining validation
 
-1. Review the native preview's appearance with the user; refine composition.
-2. Profile GPU/CPU on the real ultrawide and test fractional scaling, suspend,
-   resize, input dismissal, and optional OLED dimming/movement.
-3. Validate the user-owned Omarchy integration on real multi-monitor hardware;
-   preserve idle/lock timing and distinguish renderer failure from dismissal.
+1. Review the preview's appearance and refine composition.
+2. Profile GPU/CPU on real hardware, including ultrawide and fractional-scale
+   displays; check suspend/resume, resize, and input dismissal.
+3. Validate the user-owned Omarchy integration on multi-monitor hardware;
+   confirm idle/lock timing is preserved and renderer failure is distinguished
+   from normal dismissal.
 
 ## Known limitations
 
 - The Omarchy adapter is opt-in; its installer activates the user-owned
   launcher path, while an uninstalled system keeps the stock launcher.
 - Omaridian screensaver windows are fullscreen Qt windows, not layer-shell
-  surfaces. `--wallpaper-layer` remains a separate wallpaper experiment.
+  surfaces. Wallpaper rendering and layer-shell support are experimental and
+  outside the supported product scope.
 - It has not yet been validated across AMD, Intel, and NVIDIA hardware or
   across suspend/resume and monitor hotplug events.
 - The current performance record uses Qt's offscreen software backend; real
@@ -137,14 +166,16 @@ Please report failures with the Omarchy version, CPU, GPU, display layout and
 the command that was run. Include terminal output and a screenshot when
 possible.
 
-Preview windows use `org.omaridian.preview`. Only `--screensaver` uses
-`org.omarchy.screensaver`, including the argv marker required by Omarchy's
-existing lock handoff. No desktop configuration or security policy is changed.
+Preview windows use `org.omaridian.preview`. Screensaver windows use
+`org.omarchy.screensaver`; the Omarchy adapter also passes that identity in
+argv for the existing lock handoff. No desktop configuration or security
+policy is changed.
 
-## Layer-shell development status
+## Experimental layer-shell development status
 
-The repository currently contains an optional, CI-tested Wayland layer-shell
-renderer. It is disabled by default. When enabled,
+The repository contains an optional Wayland layer-shell renderer for
+development; it is disabled by default and is not part of the supported
+screensaver or manual-preview experience. When enabled,
 `--wallpaper-layer` creates a real background surface with an empty input
 region and renders the Omaridian map into it. It binds every initially
 advertised `wl_output`, creates one surface per output, handles runtime output

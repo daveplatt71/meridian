@@ -17,6 +17,12 @@ it with:
 ./integration/omarchy/uninstall.sh
 ```
 
+If you installed an Arch package, run its
+`/usr/share/omaridian/omarchy/uninstall.sh` before removing or upgrading the
+package. After upgrading, run the new `install.sh` to refresh the user-owned
+launcher. The installer will not overwrite an older copied launcher, and
+package removal does not delete files in your home directory.
+
 The adapter does not edit `~/.config/omarchy/shell.json`, so Omarchy retains the
 existing `idle.screensaver` and `idle.lock` values. It also never edits
 `/usr/share/omarchy`.

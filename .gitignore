@@ -1,4 +1,5 @@
 build/
+build-layer-shell/
 captures/
 pkg/
 *.pkg.tar.zst

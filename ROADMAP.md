@@ -1,58 +1,24 @@
 # Roadmap
 
-## v0.1 — public standalone preview (done)
+## Supported product scope
 
-- Native offline Omaridian preview with a vintage picture-frame presentation.
-- Static map and relief resources with minute-rate solar shading and a
-  second-rate clock.
-- Public standalone launch path; no Omarchy idle, lock, or screensaver
-  integration by default.
+- An offline Omaridian clock with a vintage picture-frame presentation,
+  static map and relief resources, minute-rate solar shading, and a second-rate
+  clock.
+- Manual preview launch for inspecting the presentation.
+- Opt-in Omarchy screensaver integration through the user-owned launcher
+  adapter. The stock launcher remains available as a fallback, and Omarchy's
+  idle and lock timing stays unchanged.
 
-## Next milestone — Omarchy theme package (static preview published)
+## Remaining validation
 
-- Add the `theme/omaridian/` package with a walnut/brass/parchment/deep-ocean
-  palette and standard/ultrawide static wallpaper assets.
-- Document the static fallback wallpaper and keep live behavior out of the
-  theme until the renderer and lifecycle contracts exist.
-- Make activation opt-in, retain a static fallback if live mode fails, clean
-  up on theme switch/uninstall, and record CPU/GPU/memory budgets.
-- Prepare the package for an Omarchy suggestion/PR after local review.
-- Keep the installable theme at the root of the companion
-  `daveplatt71/meridian-theme` repository.
+- Review the manual preview's appearance and refine composition.
+- Validate fullscreen rendering, display scaling, resize, input dismissal,
+  suspend/resume, and monitor hotplug on real Wayland hardware and GPU drivers.
+- Validate the opt-in Omarchy adapter on multi-monitor systems, including
+  idle/lock handoff, preserving existing timing and handling renderer failure.
+- Record real Wayland GPU/CPU use, memory, startup time, and package size.
 
-## Renderer and desktop modes
-
-- Share one renderer between `--wallpaper` and `--screensaver` modes. (renderer
-  preview implemented; compositor/lifecycle integration remains)
-- Pin and CI-test optional `wlr-layer-shell` protocol generation. (done)
-- Add one-output layer-shell proof with empty input and safe `wl_shm`
-  lifecycle. (implemented; initial and minute-based Omaridian scene renders
-  work, bounded frame allocation, protocol-version checks, and double-buffer
-  coalescing included;
-  multi-output lifecycle still pending)
-- Extract reusable per-output surface/buffer/render ownership while retaining
-  exactly one instance. (done; multi-output behavior remains pending)
-- Create one static `OutputSurface` per initially advertised `wl_output`.
-  (done)
-- Handle output add/remove events without stale surfaces. (done for runtime
-  registry events; standalone surface-close and logical-resize recovery done)
-- Update solar shading at minute rate while keeping the clock responsive.
-- Add a Wayland background layer for wallpaper mode.
-- Support multiple monitors and per-output scale factors. (integer scaling
-  done; optional fractional-scale/viewporter support done; runtime hardware
-  coverage remains pending)
-- Handle suspend/resume and display hotplug without stale surfaces. (runtime
-  output hotplug done; suspend/resume remains pending)
-- Define idle/lock handoff so Omaridian never changes normal policy and exits
-  cleanly when the lock screen takes over. (implemented through the opt-in
-  user-owned Omarchy launcher adapter; hardware validation remains)
-
-## Validation and release
-
-- Add clean-install tests for the package and theme discovery path.
-- Test on real Wayland hardware across supported GPU drivers, monitor layouts,
-  fractional scaling, suspend/resume, idle, and lock transitions.
-- Submit an Omarchy suggestion/PR once the package and lifecycle behavior are
-  reviewable.
-- Announce the release on X after the clean-install and real-hardware checks
-  pass.
+The optional layer-shell renderer and theme assets remain in the repository
+for reference. Neither is part of the supported screensaver package or its
+release milestones.

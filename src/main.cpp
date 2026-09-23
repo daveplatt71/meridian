@@ -46,11 +46,15 @@ int main(int argc,char **argv) {
     const bool requestedSaver = hasArgument(argc, argv, "--screensaver");
     app.setApplicationName(requestedSaver ? "org.omarchy.screensaver" : "Omaridian");
     app.setDesktopFileName(requestedSaver ? "org.omarchy.screensaver" : "org.omaridian.preview");
-    QCommandLineParser parser;parser.setApplicationDescription("Omaridian — an offline vintage solar atlas preview");parser.addHelpOption();
+    QCommandLineParser parser;parser.setApplicationDescription("Omaridian — an offline vintage solar atlas screensaver and preview");parser.addHelpOption();
     parser.addOption({"fullscreen","Fill the current display (Escape to close)."});
     parser.addOption({"screensaver","Open the live atlas as a dismissible fullscreen screensaver."});
-    parser.addOption({"wallpaper","Render the live atlas as a fullscreen wallpaper preview (not a desktop wallpaper)."});
-    parser.addOption({"wallpaper-layer","Run the experimental one-output solid-color Wayland layer-shell proof."});
+    QCommandLineOption wallpaperOption("wallpaper", "Experimental fullscreen renderer preview.");
+    wallpaperOption.setFlags(QCommandLineOption::HiddenFromHelp);
+    parser.addOption(wallpaperOption);
+    QCommandLineOption layerOption("wallpaper-layer", "Run the experimental Wayland layer-shell renderer.");
+    layerOption.setFlags(QCommandLineOption::HiddenFromHelp);
+    parser.addOption(layerOption);
     QCommandLineOption appIdOption("app-id", "Set the Wayland application id (screensaver integration uses org.omarchy.screensaver).", "id");
     appIdOption.setFlags(QCommandLineOption::HiddenFromHelp);
     parser.addOption(appIdOption);

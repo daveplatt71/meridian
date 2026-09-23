@@ -22,7 +22,7 @@ jobs:
           pacman -S --noconfirm --needed wayland wayland-protocols
           cmake -S . -B build-layer-shell -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DMERIDIAN_WITH_LAYER_SHELL=ON
+            -DOMARIDIAN_WITH_LAYER_SHELL=ON
           cmake --build build-layer-shell
           ctest --test-dir build-layer-shell --output-on-failure
 
@@ -35,18 +35,18 @@ jobs:
 
       - name: Install package and run smoke test
         run: |
-          pacman -U --noconfirm packaging/meridian-0.1.0-1-x86_64.pkg.tar.zst
+          pacman -U --noconfirm packaging/omaridian-0.1.0-2-x86_64.pkg.tar.zst
           QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME=basic \
             QT_QUICK_BACKEND=software \
-            /usr/bin/meridian --size 640x360 \
-            --at 2026-06-21T08:24:00Z --snapshot /tmp/meridian-ci.png
-          test -s /tmp/meridian-ci.png
+            /usr/bin/omaridian --size 640x360 \
+            --at 2026-06-21T08:24:00Z --snapshot /tmp/omaridian-ci.png
+          test -s /tmp/omaridian-ci.png
 
       - name: Validate package metadata and contents
         run: |
-          package_file=packaging/meridian-0.1.0-1-x86_64.pkg.tar.zst
+          package_file=packaging/omaridian-0.1.0-2-x86_64.pkg.tar.zst
           test -f "$package_file"
           pacman -Qp "$package_file"
-          tar -tf "$package_file" | grep -Fx 'usr/bin/meridian'
-          tar -tf "$package_file" | grep -Fx 'usr/share/licenses/meridian/LICENSE'
-          tar -tf "$package_file" | grep -Fx 'usr/share/doc/meridian/README.md'
+          tar -tf "$package_file" | grep -Fx 'usr/bin/omaridian'
+          tar -tf "$package_file" | grep -Fx 'usr/share/licenses/omaridian/LICENSE'
+          tar -tf "$package_file" | grep -Fx 'usr/share/doc/omaridian/README.md'

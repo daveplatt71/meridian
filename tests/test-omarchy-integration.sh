@@ -9,8 +9,9 @@ tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/omaridian-omarchy-test.XXXXXX")
 trap 'rm -rf "$tmp_dir"' EXIT
 
 bin_dir="$tmp_dir/bin"
+stock_bin="$tmp_dir/stock-bin"
 home_dir="$tmp_dir/home"
-mkdir -p "$bin_dir" "$home_dir"
+mkdir -p "$bin_dir" "$stock_bin" "$home_dir"
 log_file="$tmp_dir/launcher.log"
 config_file="$tmp_dir/adapter.conf"
 marker_file="$tmp_dir/omaridian-launched"
@@ -69,6 +70,12 @@ printf 'stock %s\n' "$*" >> "$OMARIDIAN_TEST_LOG"
 EOF
 chmod +x "$bin_dir/stock-launcher"
 
+cat > "$stock_bin/omarchy-launch-screensaver" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$stock_bin/omarchy-launch-screensaver"
+
 PATH="$bin_dir:/usr/bin:/bin" \
 HOME="$home_dir" \
 OMARIDIAN_TEST_LOG="$log_file" \
@@ -107,7 +114,9 @@ test -f "$home_dir/.config/omaridian/omarchy-screensaver.conf"
 grep -F 'omaridian-omarchy-integration: begin' "$home_dir/.bashrc"
 grep -F 'omaridian-omarchy-integration: end' "$home_dir/.bashrc"
 printf '%s\n' '[[ -f ~/.bashrc ]] && . ~/.bashrc' > "$home_dir/.bash_profile"
-PATH="$bin_dir:/usr/bin:/bin" HOME="$home_dir" bash -lc 'test "$(command -v omarchy-launch-screensaver)" = "$HOME/.local/bin/omarchy-launch-screensaver"'
+PATH="$bin_dir:$stock_bin:/usr/bin:/bin" \
+  test "$(PATH="$bin_dir:$stock_bin:/usr/bin:/bin" command -v omarchy-launch-screensaver)" = "$stock_bin/omarchy-launch-screensaver"
+PATH="$bin_dir:$stock_bin:/usr/bin:/bin" HOME="$home_dir" bash -lc 'test "$(command -v omarchy-launch-screensaver)" = "$HOME/.local/bin/omarchy-launch-screensaver"'
 HOME="$home_dir" XDG_CONFIG_HOME="$home_dir/.config" \
   "$uninstaller"
 test ! -e "$home_dir/.local/bin/omarchy-launch-screensaver"
