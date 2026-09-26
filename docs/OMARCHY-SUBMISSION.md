@@ -37,7 +37,8 @@ an Omarchy theme/integration package, or a different contribution format.
   Omarchy machine.
 - Verify any additional monitor-specific behavior on real Hyprland as more
   hardware becomes available; the current test machine has one monitor.
-- Publish a versioned GitHub release archive.
+- Published preview release: https://github.com/daveplatt71/meridian/releases/tag/v0.1.1
+- Omarchy discussion: https://github.com/omacom/omarchy/discussions/13335
 - Replace the local-tree `source=()` in `packaging/PKGBUILD` with the release
   archive URL and SHA-256 checksum before proposing an AUR-style package.
 - Attach a short ultrawide preview and the exact Omarchy/system test details.
