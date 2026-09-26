@@ -31,11 +31,12 @@ Repository: https://github.com/daveplatt71/meridian
 I would appreciate feedback on whether this belongs as an external companion,
 an Omarchy theme/integration package, or a different contribution format.
 
-## Before publishing a release
+## Release readiness
 
-- Test installation on a second Omarchy machine with a clean user account.
-- Verify screensaver dismissal, lock takeover, fallback, uninstall, and
-  multi-monitor behavior on real Hyprland.
+- Installation and core screensaver behavior have been tested on a second
+  Omarchy machine.
+- Verify any additional monitor-specific behavior on real Hyprland as more
+  hardware becomes available; the current test machine has one monitor.
 - Publish a versioned GitHub release archive.
 - Replace the local-tree `source=()` in `packaging/PKGBUILD` with the release
   archive URL and SHA-256 checksum before proposing an AUR-style package.
